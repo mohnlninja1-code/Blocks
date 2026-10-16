@@ -111,10 +111,14 @@ func _run_tests() -> void:
 	var edit_position := Vector3i(0, height_a + 1, 0)
 	_check(test_world.set_block_at(edit_position, 9), "placing a block records a world edit")
 	_check(int(test_world.get_block_at(edit_position)) == 9, "placed block is observable in chunk storage")
+	_check(test_world.set_block_state_at(edit_position, {"axis": "x", "waterlogged": "false"}), "block state edit is accepted for a real block")
 	var world_snapshot: Dictionary = test_world.save_state()
 	_check(world_snapshot.get("edits", []).size() == 1, "world save state contains explicit block edit delta")
+	_check(world_snapshot.get("state_edits", []).size() == 1, "world save state contains exact block-state properties")
 	_check(test_world.load_state(world_snapshot, 1), "world snapshot reload succeeds")
 	_check(int(test_world.get_block_at(edit_position)) == 9, "block edit survives deterministic world regeneration and reload")
+	var restored_state: Dictionary = test_world.get_block_state_at(edit_position)
+	_check(String(restored_state.get("axis", "")) == "x" and String(restored_state.get("waterlogged", "")) == "false", "block-state properties survive world snapshot reload")
 	test_world.queue_free()
 
 
