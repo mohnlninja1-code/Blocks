@@ -273,6 +273,29 @@ func save_state() -> Dictionary:
 		return int(a[2]) < int(b[2]))
 	return {"seed": world_seed, "terrain_mode": terrain_mode, "edits": rows, "state_edits": state_rows, "min_y": MIN_Y, "max_y": MAX_Y}
 
+func find_spawn_position(origin: Vector2i = Vector2i.ZERO, search_radius: int = 16) -> Vector3:
+	var best_point := Vector3(float(origin.x) + 0.5, float(surface_height_at(origin.x, origin.y) + 2), float(origin.y) + 0.5)
+	var best_score := -INF
+	for radius in range(maxi(1, search_radius) + 1):
+		for dz in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dz)) != radius:
+					continue
+				var world_x := origin.x + dx
+				var world_z := origin.y + dz
+				var biome := biome_at(world_x, world_z) if terrain_mode == "overworld" else ""
+				var height := surface_height_at(world_x, world_z)
+				var is_water_biome := biome in ["ocean", "deep_ocean", "warm_ocean", "lukewarm_ocean", "cold_ocean", "frozen_ocean", "deep_lukewarm_ocean", "deep_cold_ocean", "deep_frozen_ocean", "river", "frozen_river"]
+				if terrain_mode == "overworld" and (is_water_biome or height < 63):
+					continue
+				var score := -float(dx * dx + dz * dz) + (2.0 if biome in ["plains", "forest", "birch_forest", "meadow"] else 0.0)
+				if score > best_score:
+					best_score = score
+					best_point = Vector3(float(world_x) + 0.5, float(maxi(height, 63) + 2), float(world_z) + 0.5)
+		if best_score > -INF:
+			return best_point
+	return best_point
+
 func update_streaming(player_position: Vector3, radius: int = -1) -> void:
 	var wanted_radius := _view_radius if radius < 0 else clampi(radius, 1, 4)
 	var center := Vector2i(floori(player_position.x / float(CHUNK_SIZE)), floori(player_position.z / float(CHUNK_SIZE)))
@@ -430,10 +453,10 @@ func _generate_overworld_chunk_data(key: Vector2i) -> void:
 				var block_id := stone_id
 				if world_y == MIN_Y:
 					block_id = bedrock_id
-				elif world_y >= surface_y - 3:
-					block_id = subsurface_block
 				elif world_y == surface_y:
 					block_id = surface_block
+				elif world_y >= surface_y - 3:
+					block_id = subsurface_block
 				elif world_y < 0:
 					block_id = deepslate_id
 				if world_y < surface_y - 5 and world_y > MIN_Y + 1:
