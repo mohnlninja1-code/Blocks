@@ -53,5 +53,46 @@ func _run_tests() -> void:
 	_check(cycle_model.is_empty() and model_loader.last_error.contains("cycle"), "rejects parent cycles with diagnostic")
 	var missing_model: Dictionary = model_loader.resolve_model("missing_model")
 	_check(missing_model.is_empty() and not model_loader.last_error.is_empty(), "reports missing model file")
+	print("MODEL TEST CHECKPOINT 7: isolated chunk mesh integration")
+	var registry: Variant = root.get_node_or_null("BlockRegistry")
+	var had_test_definition := registry != null and registry.blocks.has(9000)
+	var saved_test_definition: Dictionary = registry.blocks.get(9000, {}).duplicate(true) if had_test_definition else {}
+	if registry != null:
+		registry.blocks[9000] = {"id": 9000, "name": "test_block", "display_name": "Model Test Block", "solid": true, "hardness": 1.0}
+	var world_script: Script = load("res://scripts/voxel_world.gd")
+	var render_world: Variant = world_script.new()
+	render_world.name = "ModelMeshIntegrationWorld"
+	root.add_child(render_world)
+	render_world.configure_model_root("res://tests/fixtures/minecraft")
+	var chunk_root := Node3D.new()
+	chunk_root.name = "Chunk_0_0_Test"
+	chunk_root.position.y = render_world.MIN_Y
+	render_world.add_child(chunk_root)
+	var chunk_data := PackedInt32Array()
+	chunk_data.resize(render_world.CHUNK_VOLUME)
+	chunk_data.fill(0)
+	var local_y := 200 - render_world.MIN_Y
+	chunk_data[render_world._cell_index(2, local_y, 2)] = 9000
+	render_world._chunks[Vector2i.ZERO] = {"data": chunk_data, "root": chunk_root}
+	render_world._rebuild_chunk(Vector2i.ZERO)
+	var mesh_instance := chunk_root.get_node_or_null("TerrainMesh") as MeshInstance3D
+	_check(mesh_instance != null and mesh_instance.mesh != null, "chunk renderer builds a mesh from resolved model JSON")
+	if mesh_instance != null and mesh_instance.mesh is ArrayMesh:
+		var mesh: ArrayMesh = mesh_instance.mesh
+		_check(mesh.get_surface_count() == 6, "one six-face model builds six texture-material surfaces")
+		var complete_surface_geometry := true
+		for surface_index in range(mesh.get_surface_count()):
+			var arrays: Array = mesh.surface_get_arrays(surface_index)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			if vertices.size() != 6:
+				complete_surface_geometry = false
+				break
+		_check(complete_surface_geometry, "each emitted model face has two triangles and six vertices")
+	render_world.queue_free()
+	if registry != null:
+		if had_test_definition:
+			registry.blocks[9000] = saved_test_definition
+		else:
+			registry.blocks.erase(9000)
 	print("MODEL TESTS: %d passed; %d failed" % [passes, failures])
 	quit(1 if failures > 0 else 0)
