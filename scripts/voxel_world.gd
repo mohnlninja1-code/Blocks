@@ -23,6 +23,7 @@ var _view_radius := 1
 var _materials: Dictionary = {}
 var _model_loader: Variant
 var _state_model_basis_cache: Dictionary = {}
+var _build_meshes := true
 
 func _ready() -> void:
 	_configure_noise(world_seed)
@@ -55,7 +56,8 @@ func _configure_noise(new_seed: int) -> void:
 func surface_height_at(world_x: int, world_z: int) -> int:
 	return clampi(66 + roundi(_terrain_noise.get_noise_2d(float(world_x), float(world_z)) * 14.0), MIN_Y + 8, MAX_Y - 8)
 
-func generate_world(new_seed: int, view_radius: int = 1) -> void:
+func generate_world(new_seed: int, view_radius: int = 1, build_meshes: bool = true) -> void:
+	_build_meshes = build_meshes
 	for key in _chunks:
 		var old_chunk: Dictionary = _chunks[key]
 		var old_root: Node3D = old_chunk.get("root")
@@ -70,9 +72,9 @@ func generate_world(new_seed: int, view_radius: int = 1) -> void:
 	_configure_noise(world_seed)
 	update_streaming(Vector3.ZERO, _view_radius)
 
-func load_state(state: Dictionary, view_radius: int = 1) -> bool:
+func load_state(state: Dictionary, view_radius: int = 1, build_meshes: bool = true) -> bool:
 	var new_seed := int(state.get("seed", 1))
-	generate_world(new_seed, view_radius)
+	generate_world(new_seed, view_radius, build_meshes)
 	var raw_edits: Variant = state.get("edits", [])
 	if not raw_edits is Array:
 		return false
@@ -143,7 +145,7 @@ func update_streaming(player_position: Vector3, radius: int = -1) -> void:
 		if not _chunks.has(new_key):
 			_load_chunk(new_key)
 			added_any = true
-	if added_any or removed_any:
+	if (added_any or removed_any) and _build_meshes:
 		for key in _chunks.keys():
 			_rebuild_chunk(key)
 
@@ -598,6 +600,8 @@ func _append_model_block(surfaces: Dictionary, block_id: int, block_point: Vecto
 	return appended_faces
 
 func _rebuild_chunk(key: Vector2i) -> void:
+	if not _build_meshes:
+		return
 	if not _chunks.has(key):
 		return
 	var chunk: Dictionary = _chunks[key]
