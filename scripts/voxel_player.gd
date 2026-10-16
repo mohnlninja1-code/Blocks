@@ -8,8 +8,8 @@ const JUMP_SPEED := 8.0
 const REACH_DISTANCE := 5.5
 const LOOK_SENSITIVITY := 0.0022
 
-var world: Node
-var inventory: RefCounted
+var world: Variant
+var inventory: Variant
 var game_mode := "survival"
 var health := 20.0
 var hunger := 20.0
@@ -169,7 +169,7 @@ func _update_mining(delta: float) -> void:
 	if position != _mining_target:
 		_mining_target = position
 		_mining_progress = 0.0
-	var registry := get_tree().root.get_node_or_null("BlockRegistry")
+	var registry: Variant = get_tree().root.get_node_or_null("BlockRegistry")
 	var definition: Dictionary = registry.get_definition(block_id) if registry != null else {}
 	var hardness := float(definition.get("hardness", 1.0))
 	if hardness < 0.0:
