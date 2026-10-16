@@ -178,7 +178,7 @@ func _update_mining(delta: float) -> void:
 	if game_mode == "creative":
 		_finish_mining(target)
 		return
-	var selected := inventory.get_selected() if inventory != null else {"id": 0, "count": 0}
+	var selected: Dictionary = inventory.get_selected() if inventory != null else {"id": 0, "count": 0}
 	var tool_id := int(selected.get("id", 0))
 	var speed := float(registry.mining_speed_for(block_id, tool_id)) if registry != null else 1.0
 	var duration := maxf(0.15, hardness * 1.2 / maxf(speed, 0.1))
@@ -243,7 +243,7 @@ func select_hotbar(index: int) -> void:
 	if inventory == null:
 		return
 	inventory.set_selected(index)
-	var stack := inventory.get_selected()
+	var stack: Dictionary = inventory.get_selected()
 	selected_block_id = int(stack.get("id", 1))
 
 func serialize() -> Dictionary:
