@@ -345,12 +345,8 @@ func _generate_chunk_data(key: Vector2i) -> void:
 	var data: PackedInt32Array = chunk["data"]
 	var occupied: Dictionary = chunk.get("occupied", {})
 	if terrain_mode == "superflat":
-		# Minecraft Java 1.18.2 Classic Flat layers: bedrock at Y=0,
-		# dirt at Y=1..2, grass_block at Y=3, air below/above those layers.
-		if terrain_mode == "overworld":
-		_generate_overworld_chunk_data(key)
-		return
-	for local_z in range(CHUNK_SIZE):
+		# Java 1.18.2 Classic Flat preset: bedrock, two dirt layers, grass.
+		for local_z in range(CHUNK_SIZE):
 			for local_x in range(CHUNK_SIZE):
 				for world_y in range(0, 4):
 					var flat_block_id := 5 if world_y == 0 else (1 if world_y == 3 else 2)
@@ -361,6 +357,10 @@ func _generate_chunk_data(key: Vector2i) -> void:
 		chunk["occupied"] = occupied
 		_chunks[key] = chunk
 		return
+	if terrain_mode == "overworld":
+		_generate_overworld_chunk_data(key)
+		return
+	# Legacy prototype path is retained only for saves made before terrain presets existed.
 	for local_z in range(CHUNK_SIZE):
 		for local_x in range(CHUNK_SIZE):
 			var world_x := key.x * CHUNK_SIZE + local_x
@@ -521,7 +521,7 @@ func _generate_overworld_chunk_data(key: Vector2i) -> void:
 				var lz := tree_z - base_z
 				if lx >= 0 and lx < CHUNK_SIZE and lz >= 0 and lz < CHUNK_SIZE:
 					var trunk_index := _cell_index(lx, trunk_y - MIN_Y, lz)
-					if data[trunk_index] == 0:
+					if data[trunk_index] == 0 or data[trunk_index] == _runtime_block_id("snow", 0):
 						data[trunk_index] = log_id
 						occupied[trunk_index] = true
 			for canopy_y in range(tree_y + trunk_height - 2, tree_y + trunk_height + 2):
@@ -538,7 +538,7 @@ func _generate_overworld_chunk_data(key: Vector2i) -> void:
 							continue
 						var leaf_y := clampi(canopy_y, MIN_Y, MAX_Y)
 						var leaf_index := _cell_index(local_leaf_x, leaf_y - MIN_Y, local_leaf_z)
-						if data[leaf_index] == 0:
+						if data[leaf_index] == 0 or data[leaf_index] == snow_id:
 							data[leaf_index] = leaves_id
 							occupied[leaf_index] = true
 	chunk["data"] = data
