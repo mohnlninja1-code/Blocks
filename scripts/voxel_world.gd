@@ -15,6 +15,7 @@ const FACE_UVS := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
 var world_seed: int = 1
 var _chunks: Dictionary = {}
 var _edits: Dictionary = {} # Vector3i -> block ID; ID 0 explicitly records a removed block.
+var _state_edits: Dictionary = {} # Vector3i -> exact authored block-state properties.
 var _terrain_noise := FastNoiseLite.new()
 var _cave_noise := FastNoiseLite.new()
 var _stream_center := Vector2i(2147483647, 2147483647)
@@ -62,6 +63,7 @@ func generate_world(new_seed: int, view_radius: int = 1) -> void:
 			old_root.queue_free()
 	_chunks.clear()
 	_edits.clear()
+	_state_edits.clear()
 	world_seed = new_seed
 	_view_radius = clampi(view_radius, 1, 4)
 	_stream_center = Vector2i(2147483647, 2147483647)
@@ -82,6 +84,15 @@ func load_state(state: Dictionary, view_radius: int = 1) -> bool:
 		if point.y < MIN_Y or point.y > MAX_Y or id < 0:
 			continue
 		_edits[point] = id
+	var raw_state_edits: Variant = state.get("state_edits", [])
+	if raw_state_edits is Array:
+		for row in raw_state_edits:
+			if not row is Array or row.size() != 4 or not row[3] is Dictionary:
+				continue
+			var state_point := Vector3i(int(row[0]), int(row[1]), int(row[2]))
+			if state_point.y < MIN_Y or state_point.y > MAX_Y:
+				continue
+			_state_edits[state_point] = (row[3] as Dictionary).duplicate(true)
 	for key in _chunks:
 		_apply_edits_to_chunk(key)
 	for key in _chunks:
@@ -97,7 +108,15 @@ func save_state() -> Dictionary:
 		if int(a[0]) != int(b[0]): return int(a[0]) < int(b[0])
 		if int(a[1]) != int(b[1]): return int(a[1]) < int(b[1])
 		return int(a[2]) < int(b[2]))
-	return {"seed": world_seed, "edits": rows, "min_y": MIN_Y, "max_y": MAX_Y}
+	var state_rows: Array = []
+	for point_value in _state_edits.keys():
+		var point: Vector3i = point_value
+		state_rows.append([point.x, point.y, point.z, (_state_edits[point] as Dictionary).duplicate(true)])
+	state_rows.sort_custom(func(a: Array, b: Array) -> bool:
+		if int(a[0]) != int(b[0]): return int(a[0]) < int(b[0])
+		if int(a[1]) != int(b[1]): return int(a[1]) < int(b[1])
+		return int(a[2]) < int(b[2]))
+	return {"seed": world_seed, "edits": rows, "state_edits": state_rows, "min_y": MIN_Y, "max_y": MAX_Y}
 
 func update_streaming(player_position: Vector3, radius: int = -1) -> void:
 	var wanted_radius := _view_radius if radius < 0 else clampi(radius, 1, 4)
@@ -207,10 +226,38 @@ func set_block_at(point: Vector3i, block_id: int) -> bool:
 		return false
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
-	data[_cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))] = block_id
+	var index := _cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))
+	var previous_id := int(data[index])
+	data[index] = block_id
 	chunk["data"] = data
 	_chunks[key] = chunk
 	_edits[point] = block_id
+	if previous_id != block_id or block_id == 0:
+		_state_edits.erase(point)
+	_rebuild_chunk(key)
+	if posmod(point.x, CHUNK_SIZE) == 0:
+		_rebuild_chunk(Vector2i(key.x - 1, key.y))
+	elif posmod(point.x, CHUNK_SIZE) == CHUNK_SIZE - 1:
+		_rebuild_chunk(Vector2i(key.x + 1, key.y))
+	if posmod(point.z, CHUNK_SIZE) == 0:
+		_rebuild_chunk(Vector2i(key.x, key.y - 1))
+	elif posmod(point.z, CHUNK_SIZE) == CHUNK_SIZE - 1:
+		_rebuild_chunk(Vector2i(key.x, key.y + 1))
+	return true
+
+func get_block_state_at(point: Vector3i) -> Dictionary:
+	if not _state_edits.has(point):
+		return {}
+	return (_state_edits[point] as Dictionary).duplicate(true)
+
+func set_block_state_at(point: Vector3i, state_values: Dictionary) -> bool:
+	if point.y < MIN_Y or point.y > MAX_Y or get_block_at(point) <= 0:
+		return false
+	if state_values.is_empty():
+		_state_edits.erase(point)
+	else:
+		_state_edits[point] = state_values.duplicate(true)
+	var key := Vector2i(floori(point.x / float(CHUNK_SIZE)), floori(point.z / float(CHUNK_SIZE)))
 	_rebuild_chunk(key)
 	if posmod(point.x, CHUNK_SIZE) == 0:
 		_rebuild_chunk(Vector2i(key.x - 1, key.y))
@@ -519,7 +566,8 @@ func _append_model_block(surfaces: Dictionary, block_id: int, block_point: Vecto
 	var block_name := String(definition.get("name", ""))
 	if block_name.is_empty():
 		return 0
-	var models: Array[Dictionary] = _model_loader.resolve_block_models(block_name, {}, world_seed, block_point)
+	var block_states: Dictionary = (_state_edits.get(block_point, {}) as Dictionary).duplicate(true)
+	var models: Array[Dictionary] = _model_loader.resolve_block_models(block_name, block_states, world_seed, block_point)
 	var appended_faces := 0
 	for model in models:
 		var elements: Variant = model.get("elements", [])
