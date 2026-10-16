@@ -240,6 +240,7 @@ func set_block_at(point: Vector3i, block_id: int) -> bool:
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
 	var index := _cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))
+	var previous_id := int(data[index])
 	data[index] = block_id
 	var occupied: Dictionary = chunk.get("occupied", {})
 	if block_id == 0:
@@ -250,6 +251,8 @@ func set_block_at(point: Vector3i, block_id: int) -> bool:
 	chunk["occupied"] = occupied
 	_chunks[key] = chunk
 	_edits[point] = block_id
+	if previous_id != block_id or block_id == 0:
+		_state_edits.erase(point)
 	_rebuild_chunk(key)
 	if posmod(point.x, CHUNK_SIZE) == 0:
 		_rebuild_chunk(Vector2i(key.x - 1, key.y))
