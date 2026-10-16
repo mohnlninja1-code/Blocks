@@ -43,19 +43,19 @@ func _run_tests() -> void:
 	_check(recipe_registry.by_id.has("minecraft:source_shaped"), "source recipe IDs preserve the Minecraft namespace")
 
 	var shaped_grid: Array = [
-		{"id": 8, "count": 1}, {"id": 8, "count": 1},
+		{"id": 9, "count": 1}, {"id": 9, "count": 1},
 		{"id": 0, "count": 0}, {"id": 0, "count": 0}
 	]
 	var shaped: Dictionary = recipe_registry.find_matching_recipe(shaped_grid, 2, "")
 	_check(String(shaped.get("id", "")) == "minecraft:source_shaped", "matches source shaped recipe by pattern and ingredient ID")
 	_check(int(shaped.get("output", {}).get("id", 0)) == 9001 and int(shaped.get("output", {}).get("count", 0)) == 4, "source-shaped result is normalized to a runtime item stack")
-	_check(shaped.get("inputs", []) == [{"id": 8, "count": 2}], "craft transaction consumes the exact occupied crafting inputs")
+	_check(shaped.get("inputs", []) == [{"id": 9, "count": 2}], "craft transaction consumes the exact occupied crafting inputs")
 
 	var inventory_script: Script = load("res://scripts/inventory_model.gd")
 	var craft_inventory: Variant = inventory_script.new(4)
-	craft_inventory.add_item(8, 2)
+	craft_inventory.add_item(9, 2)
 	_check(craft_inventory.craft(shaped), "source-shaped recipe can be executed by inventory transaction service")
-	_check(craft_inventory.count_item(8) == 0 and craft_inventory.count_item(9001) == 4, "source-shaped crafting consumes input and inserts declared output")
+	_check(craft_inventory.count_item(9) == 0 and craft_inventory.count_item(9001) == 4, "source-shaped crafting consumes input and inserts declared output")
 
 	var tagged_grid: Array = [
 		{"id": 9, "count": 1}, {"id": 0, "count": 0},
