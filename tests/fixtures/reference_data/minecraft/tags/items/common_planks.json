@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    {"id": "minecraft:oak_planks", "required": true},
+    {"id": "minecraft:not_in_runtime_catalog", "required": false}
+  ]
+}
