@@ -49,7 +49,7 @@ func _resolve_item_name(name: String) -> int:
 		return 0
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree != null:
-		var registry := tree.root.get_node_or_null("BlockRegistry")
+		var registry: Variant = tree.root.get_node_or_null("BlockRegistry")
 		if registry != null and registry.has_method("block_id"):
 			return int(registry.block_id(bare_name))
 	return 0
@@ -99,6 +99,7 @@ func _matches_legacy_inputs(recipe: Dictionary, grid: Array) -> bool:
 	if not inputs is Array:
 		return false
 	var required: Dictionary = {}
+	var required_item_count := 0
 	for value in inputs:
 		if not value is Dictionary:
 			return false
@@ -107,6 +108,7 @@ func _matches_legacy_inputs(recipe: Dictionary, grid: Array) -> bool:
 		if item_id <= 0 or count <= 0:
 			return false
 		required[item_id] = int(required.get(item_id, 0)) + count
+		required_item_count += count
 	for item_id in required:
 		if _available_count(grid, int(item_id)) < int(required[item_id]):
 			return false
@@ -114,7 +116,7 @@ func _matches_legacy_inputs(recipe: Dictionary, grid: Array) -> bool:
 	for stack_value in grid:
 		if stack_value is Dictionary and int(stack_value.get("id", 0)) > 0 and int(stack_value.get("count", 0)) > 0:
 			occupied += 1
-	return occupied == required.size()
+	return occupied == required_item_count
 
 func _key_ingredient(key: Dictionary, symbol: String) -> Variant:
 	if not key.has(symbol):
