@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:smelting",
+  "ingredient": {"item": "minecraft:oak_planks"},
+  "result": "minecraft:test_item",
+  "experience": 0.2,
+  "cookingtime": 200
+}
