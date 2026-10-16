@@ -1,23 +1,29 @@
-name: Source archive audit tool tests
+name: Offline audit and asset pipeline tests
 
 on:
   push:
     paths:
       - "tools/audit_source_archive.py"
+      - "tools/prepare_assets.py"
       - "tests/test_audit_source_archive.py"
+      - "tests/test_prepare_assets.py"
       - ".github/workflows/archive-audit-tool.yml"
+      - ".gitignore"
   pull_request:
     paths:
       - "tools/audit_source_archive.py"
+      - "tools/prepare_assets.py"
       - "tests/test_audit_source_archive.py"
+      - "tests/test_prepare_assets.py"
       - ".github/workflows/archive-audit-tool.yml"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  audit-tool-tests:
+  offline-asset-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -26,5 +32,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run offline fixture tests
-        run: python -m unittest discover -s tests -p "test_audit_source_archive.py" -v
+      - name: Verify no source pack payload is tracked
+        run: |
+          git ls-files assets/source assets/minecraft assets/reference_data
+          if git ls-files assets/source assets/minecraft assets/reference_data | grep -q .; then
+            echo "Source asset payloads must not be committed to the public repository."
+            exit 1
+          fi
+      - name: Run offline fixture tests (no game-resource payloads)
+        run: python -m unittest discover -s tests -p "test_*.py" -v
