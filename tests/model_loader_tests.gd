@@ -93,7 +93,8 @@ func _run_tests() -> void:
 	chunk_data.fill(0)
 	var local_y: int = 200 - render_world.MIN_Y
 	chunk_data[render_world._cell_index(2, local_y, 2)] = 9000
-	render_world._chunks[Vector2i.ZERO] = {"data": chunk_data, "root": chunk_root}
+	var test_cell_index: int = render_world._cell_index(2, local_y, 2)
+	render_world._chunks[Vector2i.ZERO] = {"data": chunk_data, "occupied": {test_cell_index: true}, "root": chunk_root}
 	render_world._rebuild_chunk(Vector2i.ZERO)
 	var mesh_instance := chunk_root.get_node_or_null("TerrainMesh") as MeshInstance3D
 	_check(mesh_instance != null and mesh_instance.mesh != null, "chunk renderer builds a mesh from resolved model JSON")
