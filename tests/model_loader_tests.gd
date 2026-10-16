@@ -53,6 +53,26 @@ func _run_tests() -> void:
 	_check(cycle_model.is_empty() and model_loader.last_error.contains("cycle"), "rejects parent cycles with diagnostic")
 	var missing_model: Dictionary = model_loader.resolve_model("missing_model")
 	_check(missing_model.is_empty() and not model_loader.last_error.is_empty(), "reports missing model file")
+	print("MODEL TEST CHECKPOINT 6B: item catalog source textures")
+	var registry_for_item_test: Variant = root.get_node_or_null("BlockRegistry")
+	var catalog_for_item_test: Variant = root.get_node_or_null("ItemModelCatalog")
+	var had_item_test_definition: bool = registry_for_item_test != null and registry_for_item_test.items.has(9001)
+	var saved_item_test_definition: Dictionary = registry_for_item_test.items.get(9001, {}).duplicate(true) if had_item_test_definition else {}
+	if registry_for_item_test != null:
+		registry_for_item_test.items[9001] = {"id": 9001, "name": "test_item", "display_name": "Test Item", "stack_size": 64}
+	if catalog_for_item_test != null and registry_for_item_test != null:
+		catalog_for_item_test.set_resource_root("res://tests/fixtures/minecraft")
+		var catalog_model: Dictionary = catalog_for_item_test.resolve_item_model(9001)
+		_check(not catalog_model.is_empty(), "item catalog resolves item model by registered item ID")
+		_check(String(catalog_for_item_test.primary_texture_path(9001)).ends_with("textures/item/test_item.png"), "item catalog picks source-model texture layer for icon")
+		var diagnostics: Dictionary = catalog_for_item_test.diagnostics_for_item_id(9001)
+		_check(bool(diagnostics.get("model_resolved", false)), "item model diagnostics expose resolved source data")
+		catalog_for_item_test.set_resource_root("res://assets/minecraft")
+	if registry_for_item_test != null:
+		if had_item_test_definition:
+			registry_for_item_test.items[9001] = saved_item_test_definition
+		else:
+			registry_for_item_test.items.erase(9001)
 	print("MODEL TEST CHECKPOINT 7: isolated chunk mesh integration")
 	var registry: Variant = root.get_node_or_null("BlockRegistry")
 	var had_test_definition: bool = registry != null and registry.blocks.has(9000)
