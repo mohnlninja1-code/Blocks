@@ -5,6 +5,8 @@ var blocks: Dictionary = {}
 var items: Dictionary = {}
 var by_name: Dictionary = {}
 var _materials: Dictionary = {}
+var asset_catalog_loaded := false
+var asset_catalog_counts: Dictionary = {"blocks_added": 0, "items_added": 0}
 
 func _ready() -> void:
 	var raw_blocks := _load_json_dictionary("res://data/blocks.json")
@@ -38,6 +40,97 @@ func _ready() -> void:
 		entry["kind"] = "item"
 		items[id] = entry
 		by_name[String(entry.get("name", ""))] = id
+
+	load_asset_catalog("res://assets/minecraft")
+
+func _source_names_in_folder(folder_path: String) -> Array[String]:
+	var result: Array[String] = []
+	var directory := DirAccess.open(folder_path)
+	if directory == null:
+		return result
+	for file_name in directory.get_files():
+		var filename := String(file_name)
+		if not filename.ends_with(".json") or filename in ["_all.json", "_list.json"]:
+			continue
+		result.append(filename.trim_suffix(".json"))
+	result.sort()
+	return result
+
+func _display_name_for_source_id(name: String) -> String:
+	return name.replace("_", " ").capitalize()
+
+func _infer_non_solid_block(name: String) -> bool:
+	if name in ["air", "cave_air", "void_air", "water", "lava", "bubble_column", "fire", "soul_fire", "short_grass", "tall_grass", "fern", "large_fern", "dead_bush", "vine", "glow_lichen", "seagrass", "tall_seagrass", "kelp", "kelp_plant", "sugar_cane", "cobweb", "redstone_wire", "tripwire", "torch", "soul_torch", "redstone_torch", "wall_torch", "soul_wall_torch", "redstone_wall_torch", "lever", "stone_button", "oak_button", "spruce_button", "birch_button", "jungle_button", "acacia_button", "dark_oak_button", "crimson_button", "warped_button", "polished_blackstone_button", "stone_pressure_plate", "oak_pressure_plate", "rail", "powered_rail", "detector_rail", "activator_rail"]:
+		return true
+	if name.ends_with("_flower") or name.ends_with("_sapling") or name.ends_with("_tulip") or name.ends_with("_orchid") or name.ends_with("_mushroom") or name.ends_with("_torchflower") or name.ends_with("_coral_fan") or name.ends_with("_coral_wall_fan"):
+		return true
+	if name in ["poppy", "dandelion", "allium", "azure_bluet", "blue_orchid", "cornflower", "lily_of_the_valley", "wither_rose", "sunflower", "lilac", "rose_bush", "peony", "pink_petals", "spore_blossom", "torchflower", "pitcher_plant"]:
+		return true
+	return false
+
+func _infer_cutout_block(name: String) -> bool:
+	return _infer_non_solid_block(name) or name.contains("leaves") or name.contains("glass") or name.contains("pane") or name.contains("ice") or name.contains("coral") or name.contains("bamboo") or name.contains("cactus") or name.contains("ladder") or name.contains("chain") or name.contains("bars") or name.contains("fence") or name.contains("door") or name.contains("trapdoor") or name.contains("sign") or name.contains("banner") or name.contains("flower") or name.contains("grass") or name.contains("fern") or name.contains("crop") or name.contains("sapling") or name.contains("vine") or name.contains("rail")
+
+func _infer_stack_size_for_item(name: String) -> int:
+	if name.ends_with("_pickaxe") or name.ends_with("_axe") or name.ends_with("_shovel") or name.ends_with("_hoe") or name.ends_with("_sword") or name.ends_with("_helmet") or name.ends_with("_chestplate") or name.ends_with("_leggings") or name.ends_with("_boots") or name in ["bow", "crossbow", "shield", "trident", "elytra", "fishing_rod", "flint_and_steel", "shears", "carrot_on_a_stick", "warped_fungus_on_a_stick", "brush", "debug_stick", "spyglass"]:
+		return 1
+	return 64
+
+func load_asset_catalog(resource_root: String = "res://assets/minecraft") -> Dictionary:
+	"""Index source model IDs for browsing/rendering; this does not implement their gameplay rules."""
+	var root_path := resource_root.trim_suffix("/")
+	var block_names := _source_names_in_folder(root_path.path_join("blockstates"))
+	var item_model_names := _source_names_in_folder(root_path.path_join("models/item"))
+	var added_blocks := 0
+	var added_items := 0
+	var next_block_id := 20000
+	for block_name in block_names:
+		if by_name.has(block_name):
+			continue
+		while blocks.has(next_block_id) or items.has(next_block_id):
+			next_block_id += 1
+		var definition := {
+			"id": next_block_id,
+			"name": block_name,
+			"display_name": _display_name_for_source_id(block_name),
+			"kind": "block",
+			"solid": not _infer_non_solid_block(block_name),
+			"opaque": not _infer_cutout_block(block_name),
+			"hardness": 1.0,
+			"drop": next_block_id,
+			"stack_size": 64,
+			"runtime_catalog_only": true,
+			"behavior_status": "MODEL_AND_NAME_DISCOVERED_UNVERIFIED",
+			"source_blockstate": root_path.path_join("blockstates").path_join(block_name + ".json")
+		}
+		blocks[next_block_id] = definition
+		by_name[block_name] = next_block_id
+		next_block_id += 1
+		added_blocks += 1
+	var next_item_id := 50000
+	for item_name in item_model_names:
+		if by_name.has(item_name):
+			continue
+		while blocks.has(next_item_id) or items.has(next_item_id):
+			next_item_id += 1
+		var definition := {
+			"id": next_item_id,
+			"name": item_name,
+			"display_name": _display_name_for_source_id(item_name),
+			"kind": "item",
+			"stack_size": _infer_stack_size_for_item(item_name),
+			"category": "source_model",
+			"runtime_catalog_only": true,
+			"behavior_status": "MODEL_AND_NAME_DISCOVERED_UNVERIFIED",
+			"source_item_model": root_path.path_join("models/item").path_join(item_name + ".json")
+		}
+		items[next_item_id] = definition
+		by_name[item_name] = next_item_id
+		next_item_id += 1
+		added_items += 1
+	asset_catalog_counts = {"blocks_added": added_blocks, "items_added": added_items, "blockstate_models_found": block_names.size(), "item_models_found": item_model_names.size()}
+	asset_catalog_loaded = not block_names.is_empty() or not item_model_names.is_empty()
+	return asset_catalog_counts.duplicate(true)
 
 func _load_json_array(path: String) -> Array:
 	if not FileAccess.file_exists(path):
@@ -75,6 +168,8 @@ func all_definitions() -> Array[Dictionary]:
 		result.append(value)
 	for value in items.values():
 		result.append(value)
+	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return String(a.get("name", "")).naturalnocasecmp_to(String(b.get("name", ""))) < 0)
 	return result
 
 func is_block_item(id: int) -> bool:
