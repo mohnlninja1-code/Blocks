@@ -1,0 +1,5 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [{"tag": "minecraft:planks"}],
+  "result": {"item": "minecraft:test_item", "count": 2}
+}
