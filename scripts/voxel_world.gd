@@ -155,7 +155,7 @@ func _load_chunk(key: Vector2i) -> void:
 	chunk_root.name = "Chunk_%d_%d" % [key.x, key.y]
 	chunk_root.position = Vector3(key.x * CHUNK_SIZE, MIN_Y, key.y * CHUNK_SIZE)
 	add_child(chunk_root)
-	_chunks[key] = {"data": data, "root": chunk_root}
+	_chunks[key] = {"data": data, "occupied": {}, "root": chunk_root}
 	_generate_chunk_data(key)
 	_apply_edits_to_chunk(key)
 
@@ -165,6 +165,7 @@ func _cell_index(local_x: int, y_index: int, local_z: int) -> int:
 func _generate_chunk_data(key: Vector2i) -> void:
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
+	var occupied: Dictionary = chunk.get("occupied", {})
 	for local_z in range(CHUNK_SIZE):
 		for local_x in range(CHUNK_SIZE):
 			var world_x := key.x * CHUNK_SIZE + local_x
@@ -188,21 +189,33 @@ func _generate_chunk_data(key: Vector2i) -> void:
 							block_id = 14 if world_y < -48 else 11
 						elif ore_value < -0.82:
 							block_id = 12
-				data[_cell_index(local_x, world_y - MIN_Y, local_z)] = block_id
+				var index := _cell_index(local_x, world_y - MIN_Y, local_z)
+				data[index] = block_id
+				if block_id != 0:
+					occupied[index] = true
 	chunk["data"] = data
+	chunk["occupied"] = occupied
 	_chunks[key] = chunk
 
 func _apply_edits_to_chunk(key: Vector2i) -> void:
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
+	var occupied: Dictionary = chunk.get("occupied", {})
 	for point_value in _edits.keys():
 		var point: Vector3i = point_value
 		if floori(point.x / float(CHUNK_SIZE)) != key.x or floori(point.z / float(CHUNK_SIZE)) != key.y:
 			continue
 		if point.y < MIN_Y or point.y > MAX_Y:
 			continue
-		data[_cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))] = int(_edits[point])
+		var index := _cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))
+		var edited_id := int(_edits[point])
+		data[index] = edited_id
+		if edited_id == 0:
+			occupied.erase(index)
+		else:
+			occupied[index] = true
 	chunk["data"] = data
+	chunk["occupied"] = occupied
 	_chunks[key] = chunk
 
 func _read_chunk_cell(key: Vector2i, local_x: int, y_index: int, local_z: int) -> int:
@@ -227,37 +240,16 @@ func set_block_at(point: Vector3i, block_id: int) -> bool:
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
 	var index := _cell_index(posmod(point.x, CHUNK_SIZE), point.y - MIN_Y, posmod(point.z, CHUNK_SIZE))
-	var previous_id := int(data[index])
 	data[index] = block_id
+	var occupied: Dictionary = chunk.get("occupied", {})
+	if block_id == 0:
+		occupied.erase(index)
+	else:
+		occupied[index] = true
 	chunk["data"] = data
+	chunk["occupied"] = occupied
 	_chunks[key] = chunk
 	_edits[point] = block_id
-	if previous_id != block_id or block_id == 0:
-		_state_edits.erase(point)
-	_rebuild_chunk(key)
-	if posmod(point.x, CHUNK_SIZE) == 0:
-		_rebuild_chunk(Vector2i(key.x - 1, key.y))
-	elif posmod(point.x, CHUNK_SIZE) == CHUNK_SIZE - 1:
-		_rebuild_chunk(Vector2i(key.x + 1, key.y))
-	if posmod(point.z, CHUNK_SIZE) == 0:
-		_rebuild_chunk(Vector2i(key.x, key.y - 1))
-	elif posmod(point.z, CHUNK_SIZE) == CHUNK_SIZE - 1:
-		_rebuild_chunk(Vector2i(key.x, key.y + 1))
-	return true
-
-func get_block_state_at(point: Vector3i) -> Dictionary:
-	if not _state_edits.has(point):
-		return {}
-	return (_state_edits[point] as Dictionary).duplicate(true)
-
-func set_block_state_at(point: Vector3i, state_values: Dictionary) -> bool:
-	if point.y < MIN_Y or point.y > MAX_Y or get_block_at(point) <= 0:
-		return false
-	if state_values.is_empty():
-		_state_edits.erase(point)
-	else:
-		_state_edits[point] = state_values.duplicate(true)
-	var key := Vector2i(floori(point.x / float(CHUNK_SIZE)), floori(point.z / float(CHUNK_SIZE)))
 	_rebuild_chunk(key)
 	if posmod(point.x, CHUNK_SIZE) == 0:
 		_rebuild_chunk(Vector2i(key.x - 1, key.y))
@@ -589,34 +581,48 @@ func _rebuild_chunk(key: Vector2i) -> void:
 		root.remove_child(child)
 		child.queue_free()
 	var data: PackedInt32Array = chunk["data"]
+	var occupied: Dictionary = chunk.get("occupied", {})
+	if not chunk.has("occupied"):
+		for index in range(data.size()):
+			if int(data[index]) != 0:
+				occupied[index] = true
+		chunk["occupied"] = occupied
+		_chunks[key] = chunk
+	var occupied_indices: Array = occupied.keys()
+	occupied_indices.sort()
 	var surfaces: Dictionary = {}
 	var base_x := key.x * CHUNK_SIZE
 	var base_z := key.y * CHUNK_SIZE
-	for y_index in range(CHUNK_HEIGHT):
+	for index_value in occupied_indices:
+		var cell_index := int(index_value)
+		if cell_index < 0 or cell_index >= data.size():
+			continue
+		var block_id := int(data[cell_index])
+		if block_id == 0:
+			continue
+		var local_x := posmod(cell_index, CHUNK_SIZE)
+		var row_index := floori(float(cell_index) / float(CHUNK_SIZE))
+		var local_z := posmod(row_index, CHUNK_SIZE)
+		var y_index := floori(float(cell_index) / float(CHUNK_SIZE * CHUNK_SIZE))
 		var world_y := MIN_Y + y_index
-		for local_z in range(CHUNK_SIZE):
-			var world_z := base_z + local_z
-			for local_x in range(CHUNK_SIZE):
-				var block_id := int(data[_cell_index(local_x, y_index, local_z)])
-				if block_id == 0:
-					continue
-				var world_x := base_x + local_x
-				var point := Vector3i(world_x, world_y, world_z)
-				var model_face_count := _append_model_block(surfaces, block_id, point, local_x, y_index, local_z)
-				if model_face_count > 0:
-					continue
-				for face_index in range(FACE_NAMES.size()):
-					var face_offset: Vector3i = FACE_OFFSETS[face_index]
-					var adjacent: Vector3i = point + face_offset
-					if get_block_at(adjacent) != 0:
-						continue
-					var face := String(FACE_NAMES[face_index])
-					var surface_key := "%d:%s" % [block_id, face]
-					if not surfaces.has(surface_key):
-						surfaces[surface_key] = {"block_id": block_id, "face": face, "vertices": [], "normals": [], "uvs": [], "material": _material_for_face(block_id, face)}
-					var surface: Dictionary = surfaces[surface_key]
-					_append_face(surface, _face_corners(local_x, y_index, local_z, face), FACE_NORMALS[face_index])
-					surfaces[surface_key] = surface
+		var world_x := base_x + local_x
+		var world_z := base_z + local_z
+		var point := Vector3i(world_x, world_y, world_z)
+		var model_face_count := _append_model_block(surfaces, block_id, point, local_x, y_index, local_z)
+		if model_face_count > 0:
+			continue
+		for face_index in range(FACE_NAMES.size()):
+			var face_offset: Vector3i = FACE_OFFSETS[face_index]
+			var adjacent: Vector3i = point + face_offset
+			if get_block_at(adjacent) != 0:
+				continue
+			var face := String(FACE_NAMES[face_index])
+			var surface_key := "%d:%s" % [block_id, face]
+			if not surfaces.has(surface_key):
+				surfaces[surface_key] = {"block_id": block_id, "face": face, "vertices": [], "normals": [], "uvs": [], "material": _material_for_face(block_id, face)}
+			var surface: Dictionary = surfaces[surface_key]
+			_append_face(surface, _face_corners(local_x, y_index, local_z, face), FACE_NORMALS[face_index])
+			surfaces[surface_key] = surface
 	var mesh := ArrayMesh.new()
 	for surface_key in surfaces.keys():
 		var surface: Dictionary = surfaces[surface_key]
