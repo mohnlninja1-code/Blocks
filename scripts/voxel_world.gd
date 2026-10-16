@@ -484,7 +484,8 @@ func _append_model_element_faces(surfaces: Dictionary, block_id: int, block_poin
 		if not uv_values is Array or uv_values.size() < 4:
 			uv_values = _default_element_uv(face, from16, to16)
 		var face_uvs := _face_uv_corners(face, uv_values, int(face_definition.get("rotation", 0)))
-		var face_normal := block_rotation * rotation_info["basis"] * _model_face_normal(face)
+		var element_basis: Basis = rotation_info["basis"]
+		var face_normal: Vector3 = block_rotation * element_basis * _model_face_normal(face)
 		if face_normal.length_squared() > 0.0:
 			face_normal = face_normal.normalized()
 		var vertices: Array = surface["vertices"]
