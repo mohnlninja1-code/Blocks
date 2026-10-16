@@ -126,7 +126,11 @@ func _run_tests() -> void:
 		_check(item_node != null, "item renderer creates a node from catalog model data")
 		var item_mesh: MeshInstance3D = item_node.get_node_or_null("ItemModel") as MeshInstance3D
 		_check(item_mesh != null and item_mesh.mesh != null, "block-backed item inherits element geometry for GUI context")
-		_check(item_mesh.mesh.get_surface_count() == 6, "block-backed item mesh keeps six model face surfaces")
+		_check(item_mesh.mesh.get_surface_count() == 1, "block-backed item groups faces that share the same supplied texture material")
+		if item_mesh.mesh.get_surface_count() == 1:
+			var item_surface_arrays: Array = item_mesh.mesh.surface_get_arrays(0)
+			var item_vertices: PackedVector3Array = item_surface_arrays[Mesh.ARRAY_VERTEX]
+			_check(item_vertices.size() == 36, "block-backed cube model retains all six faces as twelve triangles")
 		item_node.free()
 		item_catalog.set_resource_root("res://assets/minecraft")
 	else:
