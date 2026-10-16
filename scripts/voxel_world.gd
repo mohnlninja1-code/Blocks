@@ -33,6 +33,13 @@ func _ready() -> void:
 	else:
 		_model_loader = null
 
+func configure_model_root(resource_root: String) -> void:
+	var loader_script: Script = load("res://scripts/minecraft_model_loader.gd")
+	if loader_script == null:
+		_model_loader = null
+		return
+	_model_loader = loader_script.new(resource_root)
+
 func _configure_noise(new_seed: int) -> void:
 	_terrain_noise.seed = new_seed
 	_terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
