@@ -83,7 +83,9 @@ func _run_tests() -> void:
 	var render_world: Variant = world_script.new()
 	render_world.name = "ModelMeshIntegrationWorld"
 	root.add_child(render_world)
+	print("MODEL TEST CHECKPOINT 7A: world node attached")
 	render_world.configure_model_root("res://tests/fixtures/minecraft")
+	print("MODEL TEST CHECKPOINT 7B: model root configured")
 	var chunk_root := Node3D.new()
 	chunk_root.name = "Chunk_0_0_Test"
 	chunk_root.position.y = render_world.MIN_Y
@@ -95,7 +97,9 @@ func _run_tests() -> void:
 	chunk_data[render_world._cell_index(2, local_y, 2)] = 9000
 	var test_cell_index: int = render_world._cell_index(2, local_y, 2)
 	render_world._chunks[Vector2i.ZERO] = {"data": chunk_data, "occupied": {test_cell_index: true}, "root": chunk_root}
+	print("MODEL TEST CHECKPOINT 7C: starting sparse chunk model mesh build")
 	render_world._rebuild_chunk(Vector2i.ZERO)
+	print("MODEL TEST CHECKPOINT 7D: sparse chunk model mesh built")
 	var mesh_instance := chunk_root.get_node_or_null("TerrainMesh") as MeshInstance3D
 	_check(mesh_instance != null and mesh_instance.mesh != null, "chunk renderer builds a mesh from resolved model JSON")
 	if mesh_instance != null and mesh_instance.mesh is ArrayMesh:
@@ -129,7 +133,9 @@ func _run_tests() -> void:
 	one_pixel_image.fill(Color(0, 0, 0, 0))
 	one_pixel_image.set_pixel(1, 1, Color.WHITE)
 	var one_pixel_texture := ImageTexture.create_from_image(one_pixel_image)
+	print("MODEL TEST CHECKPOINT 8C: extruding single-pixel source texture")
 	var one_pixel_mesh: ArrayMesh = item_renderer_for_extrusion._build_generated_layer_mesh(one_pixel_texture, 0)
+	print("MODEL TEST CHECKPOINT 8D: single-pixel texture mesh built")
 	_check(one_pixel_mesh.get_surface_count() == 1, "generated-item layer builds one mesh surface from source texture data")
 	if one_pixel_mesh.get_surface_count() == 1:
 		var one_pixel_arrays: Array = one_pixel_mesh.surface_get_arrays(0)
@@ -138,7 +144,9 @@ func _run_tests() -> void:
 	var filled_image := Image.create(3, 3, false, Image.FORMAT_RGBA8)
 	filled_image.fill(Color.WHITE)
 	var filled_texture := ImageTexture.create_from_image(filled_image)
+	print("MODEL TEST CHECKPOINT 8E: extruding opaque source texture")
 	var filled_mesh: ArrayMesh = item_renderer_for_extrusion._build_generated_layer_mesh(filled_texture, 0)
+	print("MODEL TEST CHECKPOINT 8F: opaque texture mesh built")
 	if filled_mesh.get_surface_count() == 1:
 		var filled_arrays: Array = filled_mesh.surface_get_arrays(0)
 		_check((filled_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() == 56, "opaque 3x3 texture extrudes only its twelve outside pixel edges")
