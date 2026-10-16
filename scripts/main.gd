@@ -127,7 +127,7 @@ func _create_main_menu() -> void:
 	title.add_theme_color_override("font_color", Color(0.81, 0.88, 0.72))
 	content.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "Creative Superflat default • Java 1.18.2 parity work in progress"
+	subtitle.text = "Survival • Biome-rich Overworld • Java 1.18.2 target"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 12)
 	subtitle.add_theme_color_override("font_color", Color(0.72, 0.76, 0.81))
@@ -147,14 +147,14 @@ func _create_main_menu() -> void:
 	content.add_child(_seed_input)
 	content.add_child(_field_label("World type"))
 	_world_type_select = OptionButton.new()
-	_world_type_select.add_item("Superflat (default)", 0)
-	_world_type_select.add_item("Noise terrain (experimental)", 1)
+	_world_type_select.add_item("Overworld (biomes)", 0)
+	_world_type_select.add_item("Superflat", 1)
 	_world_type_select.select(0)
 	content.add_child(_world_type_select)
 	_mode_select = OptionButton.new()
 	_mode_select.add_item("Survival", 0)
 	_mode_select.add_item("Creative", 1)
-	_mode_select.select(1)
+	_mode_select.select(0)
 	content.add_child(_mode_select)
 	var start_button := Button.new()
 	start_button.text = "Create New World"
@@ -591,13 +591,13 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	_active_slot = _safe_slot(name)
 	_game_mode = mode
 	_world_clock = float(saved.get("world_clock", 0.25))
-	var selected_terrain_mode := "superflat"
+	var selected_terrain_mode := "overworld"
 	if _world_type_select != null and _world_type_select.selected == 1:
-		selected_terrain_mode = "noise"
+		selected_terrain_mode = "superflat"
 	if saved.has("terrain_mode"):
-		selected_terrain_mode = String(saved.get("terrain_mode", "superflat"))
+		selected_terrain_mode = String(saved.get("terrain_mode", "overworld"))
 	elif saved.has("world_state"):
-		selected_terrain_mode = "noise" # Legacy saves were created with the earlier noise terrain.
+		selected_terrain_mode = "noise" # Preserve old prototype saves without rewriting their terrain.
 	world = WORLD_SCRIPT.new()
 	world.name = "VoxelWorld"
 	world.set_terrain_mode(selected_terrain_mode)
