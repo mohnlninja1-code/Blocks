@@ -123,6 +123,27 @@ func _run_tests() -> void:
 		item_catalog.set_resource_root("res://assets/minecraft")
 	else:
 		_check(false, "ItemModelCatalog autoload is available for item render integration tests")
+	print("MODEL TEST CHECKPOINT 8B: generated item pixel-edge extrusion")
+	var item_renderer_for_extrusion: Variant = load("res://scripts/item_model_renderer.gd").new()
+	var one_pixel_image := Image.create(3, 3, false, Image.FORMAT_RGBA8)
+	one_pixel_image.fill(Color(0, 0, 0, 0))
+	one_pixel_image.set_pixel(1, 1, Color.WHITE)
+	var one_pixel_texture := ImageTexture.create_from_image(one_pixel_image)
+	var one_pixel_mesh: ArrayMesh = item_renderer_for_extrusion._build_generated_layer_mesh(one_pixel_texture, 0)
+	_check(one_pixel_mesh.get_surface_count() == 1, "generated-item layer builds one mesh surface from source texture data")
+	if one_pixel_mesh.get_surface_count() == 1:
+		var one_pixel_arrays: Array = one_pixel_mesh.surface_get_arrays(0)
+		_check((one_pixel_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() == 24, "one opaque pixel extrudes four boundary sides plus front/back")
+		_check((one_pixel_arrays[Mesh.ARRAY_INDEX] as PackedInt32Array).size() == 36, "one-pixel generated model indices describe six quads")
+	var filled_image := Image.create(3, 3, false, Image.FORMAT_RGBA8)
+	filled_image.fill(Color.WHITE)
+	var filled_texture := ImageTexture.create_from_image(filled_image)
+	var filled_mesh: ArrayMesh = item_renderer_for_extrusion._build_generated_layer_mesh(filled_texture, 0)
+	if filled_mesh.get_surface_count() == 1:
+		var filled_arrays: Array = filled_mesh.surface_get_arrays(0)
+		_check((filled_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() == 56, "opaque 3x3 texture extrudes only its twelve outside pixel edges")
+	else:
+		_check(false, "opaque 3x3 texture produces a generated model surface")
 	if registry != null:
 		if had_test_definition:
 			registry.blocks[9000] = saved_test_definition
