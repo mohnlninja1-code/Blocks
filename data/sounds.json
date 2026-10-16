@@ -1,6 +1,0 @@
-{
-  "block.break": "res://assets/minecraft/sounds/block/stone/break1.ogg",
-  "block.place": "res://assets/minecraft/sounds/block/stone/place1.ogg",
-  "block.step": "res://assets/minecraft/sounds/block/stone/step1.ogg",
-  "ui.button.click": "res://assets/minecraft/sounds/ui/button/click.ogg"
-}
