@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "": {"model": "minecraft:block/test_block"},
+    "facing=north": {"model": "minecraft:block/test_rotated", "y": 90},
+    "axis=x": [
+      {"model": "minecraft:block/test_block", "weight": 1},
+      {"model": "minecraft:block/test_rotated", "weight": 3}
+    ]
+  }
+}
