@@ -440,21 +440,28 @@ func _normalize_matched_recipe(recipe: Dictionary, grid: Array) -> Dictionary:
 func find_matching_recipe(grid: Array, grid_width: int = 2, station: String = "") -> Dictionary:
 	if grid.is_empty():
 		return {}
-	for value in recipes:
-		if not value is Dictionary:
-			continue
-		var recipe: Dictionary = value
-		if not _station_matches(recipe, station):
-			continue
-		var matches := false
-		if recipe.has("inputs"):
-			matches = _matches_legacy_inputs(recipe, grid)
-		elif String(recipe.get("type", "")).ends_with("_crafting_shaped") or recipe.has("pattern"):
-			matches = _matches_shaped(recipe, grid, grid_width)
-		elif String(recipe.get("type", "")).ends_with("_crafting_shapeless") or recipe.has("ingredients"):
-			matches = _matches_shapeless(recipe, grid)
-		if matches:
-			return _normalize_matched_recipe(recipe, grid)
+	# Prefer actual Java source recipes: the starter catalog contains deliberately simplified
+	# count-only recipes and must not override a source recipe's shaped grid semantics.
+	for source_pass in [true, false]:
+		for value in recipes:
+			if not value is Dictionary:
+				continue
+			var recipe: Dictionary = value
+			if bool(recipe.get("source_pack_recipe", false)) != source_pass:
+				continue
+			if not _station_matches(recipe, station):
+				continue
+			var matches := false
+			if recipe.has("inputs"):
+				matches = _matches_legacy_inputs(recipe, grid)
+			elif String(recipe.get("type", "")).ends_with("_crafting_shaped") or recipe.has("pattern"):
+				matches = _matches_shaped(recipe, grid, grid_width)
+			elif String(recipe.get("type", "")).ends_with("_crafting_shapeless") or recipe.has("ingredients"):
+				matches = _matches_shapeless(recipe, grid)
+			if matches:
+				var normalized := _normalize_matched_recipe(recipe, grid)
+				if not normalized.is_empty():
+					return normalized
 	return {}
 
 func _station_for_cooking_type(recipe_type: String) -> String:
