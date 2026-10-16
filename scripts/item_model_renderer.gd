@@ -233,6 +233,28 @@ func _build_element_mesh(model: Dictionary, catalog: Variant) -> ArrayMesh:
 		mesh.surface_set_material(mesh.get_surface_count() - 1, surface["material"] as Material)
 	return mesh
 
+func _append_quad_to_surface(surface: Dictionary, corners: Array, normal: Vector3, uv_corners: Array) -> Dictionary:
+	var vertices: Array = surface.get("vertices", [])
+	var normals: Array = surface.get("normals", [])
+	var uvs: Array = surface.get("uvs", [])
+	var indices: Array = surface.get("indices", [])
+	var first_index := vertices.size()
+	for index in range(4):
+		vertices.append(corners[index])
+		normals.append(normal)
+		uvs.append(uv_corners[index])
+	indices.append_array([first_index, first_index + 1, first_index + 2, first_index, first_index + 2, first_index + 3])
+	surface["vertices"] = vertices
+	surface["normals"] = normals
+	surface["uvs"] = uvs
+	surface["indices"] = indices
+	return surface
+
+func _pixel_opaque(image: Image, x: int, y: int) -> bool:
+	if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
+		return false
+	return image.get_pixel(x, y).a > 0.05
+
 func _build_generated_item_mesh(model: Dictionary, catalog: Variant) -> ArrayMesh:
 	var textures: Variant = model.get("textures", {})
 	var mesh := ArrayMesh.new()
@@ -251,28 +273,87 @@ func _build_generated_item_mesh(model: Dictionary, catalog: Variant) -> ArrayMes
 		var texture_path := _texture_for_reference(String(textures[key]), textures, catalog)
 		if texture_path.is_empty() or not ResourceLoader.exists(texture_path):
 			continue
-		var offset_z := -0.002 * float(layer_index)
-		var vertices := PackedVector3Array([
-			Vector3(-0.5, -0.5, offset_z), Vector3(0.5, -0.5, offset_z),
-			Vector3(0.5, 0.5, offset_z), Vector3(-0.5, 0.5, offset_z),
-			Vector3(0.5, -0.5, offset_z + 0.001), Vector3(-0.5, -0.5, offset_z + 0.001),
-			Vector3(-0.5, 0.5, offset_z + 0.001), Vector3(0.5, 0.5, offset_z + 0.001)
-		])
-		var uvs := PackedVector2Array([
-			Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0),
-			Vector2(1, 1), Vector2(0, 1), Vector2(0, 0), Vector2(1, 0)
-		])
-		var normals := PackedVector3Array([
-			Vector3.FORWARD, Vector3.FORWARD, Vector3.FORWARD, Vector3.FORWARD,
-			Vector3.BACK, Vector3.BACK, Vector3.BACK, Vector3.BACK
-		])
-		var indices := PackedInt32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7])
+		var texture := load(texture_path) as Texture2D
+		if texture == null:
+			continue
+		var image := texture.get_image()
+		if image == null or image.is_empty():
+			continue
+		var width := image.get_width()
+		var height := image.get_height()
+		if width <= 0 or height <= 0:
+			continue
+		var layer_depth_offset := float(layer_index) * 0.001
+		var z_front := -0.03125 - layer_depth_offset
+		var z_back := 0.03125 - layer_depth_offset
+		var uv_top_left := Vector2(0.0, 0.0)
+		var uv_top_right := Vector2(1.0, 0.0)
+		var uv_bottom_right := Vector2(1.0, 1.0)
+		var uv_bottom_left := Vector2(0.0, 1.0)
+		var surface: Dictionary = {"vertices": [], "normals": [], "uvs": [], "indices": []}
+		# The front/back quads use the exact supplied texture; alpha is clipped from its pixels.
+		surface = _append_quad_to_surface(
+			surface,
+			[Vector3(-0.5, -0.5, z_front), Vector3(0.5, -0.5, z_front), Vector3(0.5, 0.5, z_front), Vector3(-0.5, 0.5, z_front)],
+			Vector3.FORWARD,
+			[uv_bottom_left, uv_bottom_right, uv_top_right, uv_top_left]
+		)
+		surface = _append_quad_to_surface(
+			surface,
+			[Vector3(0.5, -0.5, z_back), Vector3(-0.5, -0.5, z_back), Vector3(-0.5, 0.5, z_back), Vector3(0.5, 0.5, z_back)],
+			Vector3.BACK,
+			[uv_bottom_right, uv_bottom_left, uv_top_left, uv_top_right]
+		)
+		var pixel_width := 1.0 / float(width)
+		var pixel_height := 1.0 / float(height)
+		# Extrude only opaque boundary pixels, using the same texture pixel as the side material.
+		for y in range(height):
+			for x in range(width):
+				if not _pixel_opaque(image, x, y):
+					continue
+				var u0 := float(x) * pixel_width
+				var u1 := float(x + 1) * pixel_width
+				var v0 := float(y) * pixel_height
+				var v1 := float(y + 1) * pixel_height
+				var x0 := -0.5 + u0
+				var x1 := -0.5 + u1
+				var y1 := 0.5 - v0
+				var y0 := 0.5 - v1
+				var edge_uvs := [Vector2(u0, v0), Vector2(u1, v0), Vector2(u1, v1), Vector2(u0, v1)]
+				if not _pixel_opaque(image, x, y - 1):
+					surface = _append_quad_to_surface(
+						surface,
+						[Vector3(x0, y1, z_front), Vector3(x1, y1, z_front), Vector3(x1, y1, z_back), Vector3(x0, y1, z_back)],
+						Vector3.UP,
+						edge_uvs
+					)
+				if not _pixel_opaque(image, x, y + 1):
+					surface = _append_quad_to_surface(
+						surface,
+						[Vector3(x0, y0, z_front), Vector3(x0, y0, z_back), Vector3(x1, y0, z_back), Vector3(x1, y0, z_front)],
+						Vector3.DOWN,
+						edge_uvs
+					)
+				if not _pixel_opaque(image, x - 1, y):
+					surface = _append_quad_to_surface(
+						surface,
+						[Vector3(x0, y0, z_front), Vector3(x0, y0, z_back), Vector3(x0, y1, z_back), Vector3(x0, y1, z_front)],
+						Vector3.LEFT,
+						edge_uvs
+					)
+				if not _pixel_opaque(image, x + 1, y):
+					surface = _append_quad_to_surface(
+						surface,
+						[Vector3(x1, y0, z_front), Vector3(x1, y1, z_front), Vector3(x1, y1, z_back), Vector3(x1, y0, z_back)],
+						Vector3.RIGHT,
+						edge_uvs
+					)
 		var arrays: Array = []
 		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = vertices
-		arrays[Mesh.ARRAY_TEX_UV] = uvs
-		arrays[Mesh.ARRAY_NORMAL] = normals
-		arrays[Mesh.ARRAY_INDEX] = indices
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(surface["vertices"])
+		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(surface["normals"])
+		arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(surface["uvs"])
+		arrays[Mesh.ARRAY_INDEX] = PackedInt32Array(surface["indices"])
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _material_for_path(texture_path, true))
 		layer_index += 1
