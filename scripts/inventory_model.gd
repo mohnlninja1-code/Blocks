@@ -39,7 +39,7 @@ func _stack_limit(item_id: int) -> int:
 		return 0
 	if is_instance_valid(Engine.get_main_loop()) and Engine.get_main_loop() is SceneTree:
 		var tree := Engine.get_main_loop() as SceneTree
-		var registry := tree.root.get_node_or_null("BlockRegistry")
+		var registry: Variant = tree.root.get_node_or_null("BlockRegistry")
 		if registry != null and registry.has_method("stack_limit"):
 			return maxi(1, int(registry.stack_limit(item_id)))
 	return 64
