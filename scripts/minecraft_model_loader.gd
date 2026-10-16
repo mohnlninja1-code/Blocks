@@ -93,7 +93,7 @@ func _resolve_model(model_id: String, ancestry: Array[String], depth: int) -> Di
 		last_error = "Unsupported model resource location: %s" % model_id
 		return {}
 	if _model_cache.has(normalized):
-		return (_model_cache[normalized] as Dictionary).duplicate(true)
+		return (_model_cache[normalized] as Dictionary).duplicate(false)
 	if depth > MAX_PARENT_DEPTH:
 		last_error = "Model parent chain exceeded depth limit at %s" % normalized
 		return {}
@@ -195,11 +195,12 @@ func load_blockstate(block_name: String) -> Dictionary:
 		return {}
 	var path := asset_root.path_join("blockstates").path_join(normalized.trim_prefix("block/") + ".json")
 	if _blockstate_cache.has(path):
-		return (_blockstate_cache[path] as Dictionary).duplicate(true)
+		return (_blockstate_cache[path] as Dictionary).duplicate(false)
 	var value := _read_json(path)
 	if value.is_empty():
 		if last_error.is_empty():
 			last_error = "Blockstate file not found: %s" % path
+		_blockstate_cache[path] = {"_missing_resource": true}
 		return {}
 	value["_source_path"] = path
 	_blockstate_cache[path] = value.duplicate(true)
