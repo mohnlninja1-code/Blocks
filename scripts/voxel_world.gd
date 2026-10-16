@@ -13,6 +13,7 @@ const TRIANGLE_ORDER := [0, 1, 2, 0, 2, 3]
 const FACE_UVS := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
 
 var world_seed: int = 1
+var terrain_mode := "superflat" # Default Java 1.18.2 Classic Flat preset; noise remains experimental.
 var _chunks: Dictionary = {}
 var _edits: Dictionary = {} # Vector3i -> block ID; ID 0 explicitly records a removed block.
 var _state_edits: Dictionary = {} # Vector3i -> exact authored block-state properties.
@@ -53,7 +54,12 @@ func _configure_noise(new_seed: int) -> void:
 	_cave_noise.frequency = 0.055
 	_cave_noise.fractal_octaves = 2
 
+func set_terrain_mode(mode_name: String) -> void:
+	terrain_mode = mode_name if mode_name in ["superflat", "noise"] else "superflat"
+
 func surface_height_at(world_x: int, world_z: int) -> int:
+	if terrain_mode == "superflat":
+		return 3
 	return clampi(66 + roundi(_terrain_noise.get_noise_2d(float(world_x), float(world_z)) * 14.0), MIN_Y + 8, MAX_Y - 8)
 
 func generate_world(new_seed: int, view_radius: int = 1, build_meshes: bool = true) -> void:
@@ -74,6 +80,7 @@ func generate_world(new_seed: int, view_radius: int = 1, build_meshes: bool = tr
 
 func load_state(state: Dictionary, view_radius: int = 1, build_meshes: bool = true) -> bool:
 	var new_seed := int(state.get("seed", 1))
+	set_terrain_mode(String(state.get("terrain_mode", terrain_mode)))
 	generate_world(new_seed, view_radius, build_meshes)
 	var raw_edits: Variant = state.get("edits", [])
 	if not raw_edits is Array:
@@ -118,7 +125,7 @@ func save_state() -> Dictionary:
 		if int(a[0]) != int(b[0]): return int(a[0]) < int(b[0])
 		if int(a[1]) != int(b[1]): return int(a[1]) < int(b[1])
 		return int(a[2]) < int(b[2]))
-	return {"seed": world_seed, "edits": rows, "state_edits": state_rows, "min_y": MIN_Y, "max_y": MAX_Y}
+	return {"seed": world_seed, "terrain_mode": terrain_mode, "edits": rows, "state_edits": state_rows, "min_y": MIN_Y, "max_y": MAX_Y}
 
 func update_streaming(player_position: Vector3, radius: int = -1) -> void:
 	var wanted_radius := _view_radius if radius < 0 else clampi(radius, 1, 4)
@@ -168,6 +175,20 @@ func _generate_chunk_data(key: Vector2i) -> void:
 	var chunk: Dictionary = _chunks[key]
 	var data: PackedInt32Array = chunk["data"]
 	var occupied: Dictionary = chunk.get("occupied", {})
+	if terrain_mode == "superflat":
+		# Minecraft Java 1.18.2 Classic Flat layers: bedrock at Y=0,
+		# dirt at Y=1..2, grass_block at Y=3, air below/above those layers.
+		for local_z in range(CHUNK_SIZE):
+			for local_x in range(CHUNK_SIZE):
+				for world_y in range(0, 4):
+					var flat_block_id := 5 if world_y == 0 else (1 if world_y == 3 else 2)
+					var flat_index := _cell_index(local_x, world_y - MIN_Y, local_z)
+					data[flat_index] = flat_block_id
+					occupied[flat_index] = true
+		chunk["data"] = data
+		chunk["occupied"] = occupied
+		_chunks[key] = chunk
+		return
 	for local_z in range(CHUNK_SIZE):
 		for local_x in range(CHUNK_SIZE):
 			var world_x := key.x * CHUNK_SIZE + local_x
