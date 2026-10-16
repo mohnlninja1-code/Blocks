@@ -2,32 +2,31 @@
 
 ## Target
 
-Godot 4.7.2 stable, GDScript and GL Compatibility renderer. Android orientation is configured as landscape; package ID is `org.blocks.voxelfrontier`. The official Godot 4.7.2 stable release was published on 18 August 2026. The renderer/export path is a target, not a validated compatibility claim.
+Godot 4.7.2 stable, GDScript and GL Compatibility renderer. Android orientation is set to landscape; application ID is `org.blocks.voxelfrontier`. This is a chosen target, not proof of Android visual/performance compatibility.
 
-## Important baseline correction
+## Current source modules
 
-The public GitHub tree is a 16-file bootstrap scaffold. The services described below are **planned system boundaries**, not currently present implementations. Missing source paths and evidence are recorded in `docs/BASELINE_REPORT.md` and `docs/PARITY_MATRIX.md`.
-
-| Planned service | Intended responsibility | Current source status |
+| Module | Actual implementation | Known boundary |
 |---|---|---|
-| BlockRegistry | 1.18.2 block/item metadata, state and tag access | Partial starter registry only; references missing `data/expanded_blocks.json` |
-| SaveStore | Versioned world/player/container/entity serialization; crash-safe rotation/recovery | Missing `scripts/save_store.gd` |
-| SoundBank | Event-to-asset mapping and bounded audio playback | Missing `scripts/sound_bank.gd` |
-| RecipeRegistry | Reference recipe loading, station/type matching, remainders/unlocks | Missing `scripts/recipe_registry.gd` |
-| VoxelWorld | Chunked world storage, state-aware mesh/collision, deterministic terrain and streaming | No runtime source file in checked-in tree |
-| VoxelPlayer | Movement, interaction, survival rules and persistence | No runtime source file in checked-in tree |
-| InventoryModel | Atomic item stacks, crafting, transfer and equipment state | No runtime source file in checked-in tree |
-| Entity runtime | Goal-driven AI, physics, attacks, drops and save state | No runtime source file in checked-in tree |
-| Main/mobile UI | Menus, game mode, HUD, touch input, pause/settings and dimension transitions | `scenes/main.tscn` references missing `scripts/main.gd` |
+| `BlockRegistry` | Loads starter blocks/items from JSON; material cache; face texture path lookup and starter tool helper rules | Only 19 blocks and 8 items; not the Java registry |
+| `SaveStore` | Versioned JSON saves, temporary write, prior-save backup, corrupt-primary backup recovery | Single-player foundation; mobile power-loss/large-save stress not tested |
+| `SoundBank` | Optional event-to-path map, lazy streams, capped voice pool | Few illustrative names; clip paths may not exist until asset preparation; no event parity |
+| `RecipeRegistry` | Starter JSON plus shaped/shapeless matching and legacy inputs; basic smelting data normalization | Not complete 1.18.2 recipe format, tags/unlocks/remainders/stations |
+| `InventoryModel` | Stack insertion, total counts, atomic cost spending, rollback on output capacity failure, JSON-compatible save state | Core data model only; full slot controls, equipment/container transfer not implemented |
+| `VoxelWorld` | Integer block coordinates, 16×16 chunks with packed IDs for Y=-64…319, seeded noise height/cave/ore starter generation, 3×3 streaming, edits, visible cube-face mesh/collision | Not vanilla worldgen, stateful blocks, real model geometry, dimension data, lighting propagation or efficient large-view streaming |
+| `VoxelPlayer` | CharacterBody3D, keyboard/mouse actions, basic movement/jump/sprint/sneak/Creative flight, block ray target/mining/placement, health/hunger storage | No parity physics/tool tiers/damage, touch-look QA or complete survival rules |
+| `main.gd` | Menu, world setup/load, HUD/hotbar, simple inventory panel, touch buttons, pause, autosave, day/night color/light changes | Screens have only headless smoke evidence, not screenshot/on-device QA |
 
-## Asset and rendering constraints
+## Rendering and asset flow
 
-The source archive is kept outside public Git until resource distribution rights are established. `tools/audit_source_archive.py` creates a hash-audited file/model/blockstate/recipe inventory from a local copy. Archive presence is not runtime integration. Model inheritance, texture indirection, element geometry, blockstate variants/multipart, transparency and context transforms need a real renderer plus visual regression evidence.
+`tools/prepare_assets.py` verifies the uploaded archive's expected SHA-256, tests ZIP integrity and stages `assets/minecraft/**` plus `data/minecraft/**` reference data to an ignored local tree. It writes a per-file checksum manifest. By default, a differing destination aborts without replacing files; `--force` preserves changed target bytes before replacement. The source archive is never modified.
 
-## Coordinates and saves
+World meshing currently maps simple cube faces using starter registry texture fields and fallback colors. No Java model parent resolver, model-element builder, blockstate selector or item-model renderer has been integrated yet. Extracting a resource file is not equivalent to consuming it in gameplay.
 
-The required world range is Y=-64 through Y=319. Chunk floor division and positive local-coordinate modulo, edit deltas, block entities, inventory stacks, entities, portals and dimension-specific state must be consistent across mesh/collision, loading and saving. No matching complete runtime/save implementation is present at the inspected baseline.
+## Coordinate and save rules
 
-## Scope discipline
+Target vertical coordinates are Y=-64 through Y=319. Chunk lookup uses floor division for negative X/Z and positive modulo for local coordinates. Block edits are saved as explicit deltas to deterministic base terrain. Save/player/inventory foundation data is serialized; container contents, all entity state, dimensions and portal links are not implemented.
 
-Do not mark a feature VERIFIED until the source implementation, targeted tests and evidence exist. Do not treat successful export, a registry entry, or an asset-file count as proof of gameplay parity.
+## Verification policy
+
+See `docs/PARITY_MATRIX.md` and `docs/DELIVERY_STATUS.md`. Godot CI has passed a narrow foundation test suite. No feature is marked fully complete from resource counts, registry rows or successful packaging alone.
