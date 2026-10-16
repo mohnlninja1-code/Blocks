@@ -5,9 +5,9 @@ const WORLD_SCRIPT = preload("res://scripts/voxel_world.gd")
 const PLAYER_SCRIPT = preload("res://scripts/voxel_player.gd")
 const INVENTORY_SCRIPT = preload("res://scripts/inventory_model.gd")
 
-var world: Node3D
-var player: CharacterBody3D
-var inventory: RefCounted
+var world: Variant
+var player: Variant
+var inventory: Variant
 var sun: DirectionalLight3D
 var environment: WorldEnvironment
 var _world_name := "New World"
@@ -421,8 +421,12 @@ func _safe_slot(value: String) -> String:
 
 func _clear_world_nodes() -> void:
 	if is_instance_valid(player):
+		if player.get_parent() == self:
+			remove_child(player)
 		player.queue_free()
 	if is_instance_valid(world):
+		if world.get_parent() == self:
+			remove_child(world)
 		world.queue_free()
 	player = null
 	world = null
