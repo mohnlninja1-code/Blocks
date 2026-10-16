@@ -140,6 +140,41 @@ func _run_tests() -> void:
 	_check(String(flat_world.terrain_mode) == "superflat" and int(flat_world.get_block_at(Vector3i(0, 3, 0))) == 1, "terrain mode and default layers survive reload")
 	flat_world.queue_free()
 
+	var overworld_world: Variant = world_script.new()
+	overworld_world.name = "BiomeWorldIntegrationTest"
+	root.add_child(overworld_world)
+	overworld_world.set_terrain_mode("overworld")
+	overworld_world.generate_world(1182026, 1, false)
+	_check(String(overworld_world.terrain_mode) == "overworld", "normal Overworld is the default generator mode")
+	var biome_valid_names := [
+		"ocean", "deep_ocean", "warm_ocean", "lukewarm_ocean", "cold_ocean", "frozen_ocean",
+		"deep_lukewarm_ocean", "deep_cold_ocean", "deep_frozen_ocean",
+		"plains", "sunflower_plains", "snowy_plains", "ice_spikes", "desert", "swamp",
+		"forest", "flower_forest", "birch_forest", "old_growth_birch_forest", "dark_forest",
+		"taiga", "snowy_taiga", "old_growth_pine_taiga", "old_growth_spruce_taiga",
+		"savanna", "savanna_plateau", "windswept_hills", "windswept_forest", "windswept_gravelly_hills",
+		"windswept_savanna", "jungle", "sparse_jungle", "bamboo_jungle", "badlands",
+		"eroded_badlands", "wooded_badlands", "meadow", "grove", "snowy_slopes", "jagged_peaks",
+		"frozen_peaks", "stony_peaks", "river", "frozen_river", "beach", "snowy_beach", "stony_shore"
+	]
+	var sampled_biomes: Dictionary = {}
+	var invalid_biome_names: Array[String] = []
+	for sample_z in range(-2048, 2049, 256):
+		for sample_x in range(-2048, 2049, 256):
+			var sample_biome := String(overworld_world.biome_at(sample_x, sample_z))
+			sampled_biomes[sample_biome] = true
+			if not sample_biome in biome_valid_names and not invalid_biome_names.has(sample_biome):
+				invalid_biome_names.append(sample_biome)
+	_check(sampled_biomes.size() >= 5, "seeded climate fields select multiple Overworld biomes over a broad region")
+	_check(invalid_biome_names.is_empty(), "biome selector only emits Java 1.18.2 biome identifiers")
+	var spawn_position: Vector3 = overworld_world.find_spawn_position(Vector2i.ZERO, 16)
+	var spawn_biome := String(overworld_world.biome_at(floori(spawn_position.x), floori(spawn_position.z)))
+	_check(spawn_biome not in ["ocean", "deep_ocean", "warm_ocean", "lukewarm_ocean", "cold_ocean", "frozen_ocean", "deep_lukewarm_ocean", "deep_cold_ocean", "deep_frozen_ocean", "river", "frozen_river"], "world spawn search avoids ocean and river biomes")
+	_check(spawn_position.y >= 65.0, "Survival spawn is placed above sea level")
+	var biome_snapshot: Dictionary = overworld_world.save_state()
+	_check(String(biome_snapshot.get("terrain_mode", "")) == "overworld", "world snapshot stores normal Overworld mode")
+	overworld_world.queue_free()
+
 
 
 
