@@ -98,6 +98,7 @@ func _run_tests() -> void:
 	var test_world: Variant = world_script.new()
 	test_world.name = "WorldGenerationIntegrationTest"
 	root.add_child(test_world)
+	test_world.set_terrain_mode("noise")
 	test_world.generate_world(1182026, 1, false)
 	var height_a := int(test_world.surface_height_at(0, 0))
 	var height_b := int(test_world.surface_height_at(0, 0))
@@ -120,6 +121,25 @@ func _run_tests() -> void:
 	var restored_state: Dictionary = test_world.get_block_state_at(edit_position)
 	_check(String(restored_state.get("axis", "")) == "x" and String(restored_state.get("waterlogged", "")) == "false", "block-state properties survive world snapshot reload")
 	test_world.queue_free()
+
+	var flat_world: Variant = world_script.new()
+	flat_world.name = "SuperflatWorldIntegrationTest"
+	root.add_child(flat_world)
+	flat_world.set_terrain_mode("superflat")
+	flat_world.generate_world(1182026, 1, false)
+	_check(int(flat_world.surface_height_at(0, 0)) == 3, "Classic Flat surface is fixed at Y=3")
+	_check(int(flat_world.get_block_at(Vector3i(0, 0, 0))) == 5, "Classic Flat places bedrock at Y=0")
+	_check(int(flat_world.get_block_at(Vector3i(0, 1, 0))) == 2 and int(flat_world.get_block_at(Vector3i(0, 2, 0))) == 2, "Classic Flat has two dirt layers")
+	_check(int(flat_world.get_block_at(Vector3i(0, 3, 0))) == 1, "Classic Flat has grass_block at Y=3")
+	_check(int(flat_world.get_block_at(Vector3i(0, -1, 0))) == 0 and int(flat_world.get_block_at(Vector3i(0, 4, 0))) == 0, "Classic Flat is empty directly below and above the four-layer preset")
+	_check(int(flat_world.get_block_at(Vector3i(-1, 3, -1))) == 1, "Classic Flat layers span negative chunk coordinates")
+	var flat_snapshot: Dictionary = flat_world.save_state()
+	_check(String(flat_snapshot.get("terrain_mode", "")) == "superflat", "world save snapshot records Superflat terrain mode")
+	flat_world.set_terrain_mode("noise")
+	_check(flat_world.load_state(flat_snapshot, 1, false), "Superflat world snapshot reload succeeds")
+	_check(String(flat_world.terrain_mode) == "superflat" and int(flat_world.get_block_at(Vector3i(0, 3, 0))) == 1, "terrain mode and default layers survive reload")
+	flat_world.queue_free()
+
 
 
 
