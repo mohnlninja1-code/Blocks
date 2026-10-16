@@ -7,6 +7,7 @@ const SPRINT_SPEED := 7.0
 const JUMP_SPEED := 8.0
 const REACH_DISTANCE := 5.5
 const LOOK_SENSITIVITY := 0.0022
+const SURVIVAL_TICK_SECONDS := 0.05
 const ITEM_RENDERER_SCRIPT = preload("res://scripts/item_model_renderer.gd")
 
 var world: Variant
@@ -14,7 +15,15 @@ var inventory: Variant
 var game_mode := "survival"
 var health := 20.0
 var hunger := 20.0
+var food_saturation := 5.0
+var exhaustion := 0.0
+var difficulty := "normal"
 var armor_points := 0
+var _survival_tick_accumulator := 0.0
+var _natural_regeneration_ticks := 0
+var _starvation_ticks := 0
+var _peaceful_regeneration_ticks := 0
+var _fall_distance := 0.0
 var selected_block_id := 1
 var creative_flight_enabled := false
 var camera: Camera3D
@@ -114,10 +123,13 @@ func _movement_axis() -> Vector2:
 func _physics_process(delta: float) -> void:
 	if world == null:
 		return
+	var previous_position := global_position
+	var was_on_floor := is_on_floor()
+	var sprinting := Input.is_action_pressed("sprint") or bool(_virtual_buttons["sprint"])
 	var axis := _movement_axis()
 	var local_direction := Vector3(axis.x, 0.0, axis.y)
 	var direction := (global_transform.basis * local_direction).normalized()
-	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") or bool(_virtual_buttons["sprint"]) else WALK_SPEED
+	var speed := SPRINT_SPEED if sprinting else WALK_SPEED
 	if Input.is_action_pressed("sneak") or bool(_virtual_buttons["sneak"]):
 		speed *= 0.3
 	velocity.x = move_toward(velocity.x, direction.x * speed, 25.0 * delta)
@@ -137,14 +149,124 @@ func _physics_process(delta: float) -> void:
 			velocity.y = 0.0
 		if (Input.is_action_just_pressed("jump") or bool(_virtual_buttons["jump"])) and is_on_floor():
 			velocity.y = JUMP_SPEED
+			add_exhaustion(0.2 if sprinting else 0.05)
 	move_and_slide()
+	var horizontal_distance := Vector2(global_position.x - previous_position.x, global_position.z - previous_position.z).length()
+	if game_mode == "survival" and sprinting:
+		add_exhaustion(horizontal_distance * 0.1)
+	if game_mode == "survival":
+		if not was_on_floor and velocity.y <= 0.0:
+			_fall_distance += maxf(0.0, previous_position.y - global_position.y)
+		if is_on_floor():
+			if not was_on_floor and _fall_distance > 0.0:
+				apply_fall_damage(_fall_distance)
+			_fall_distance = 0.0
+		_survival_tick_accumulator += delta
+		while _survival_tick_accumulator >= SURVIVAL_TICK_SECONDS:
+			_survival_tick_accumulator -= SURVIVAL_TICK_SECONDS
+			tick_survival()
 	if Input.is_action_pressed("break_block") or bool(_virtual_buttons["break"]):
 		_update_mining(delta)
 	else:
 		_mining_progress = 0.0
 		_mining_target = Vector3i(2147483647, 2147483647, 2147483647)
 	if Input.is_action_just_pressed("place_block"):
-		place_target_block()
+		use_selected_item()
+
+func set_difficulty(value: String) -> void:
+	difficulty = value if value in ["peaceful", "easy", "normal", "hard"] else "normal"
+
+func add_exhaustion(amount: float) -> void:
+	if game_mode != "survival" or health <= 0.0 or amount <= 0.0:
+		return
+	exhaustion = minf(40.0, exhaustion + amount)
+
+func receive_damage(amount: float, _damage_source: String = "generic") -> bool:
+	if game_mode == "creative" or health <= 0.0 or amount <= 0.0:
+		return false
+	health = maxf(0.0, health - amount)
+	return true
+
+func heal(amount: float) -> void:
+	if amount <= 0.0 or health <= 0.0:
+		return
+	health = minf(20.0, health + amount)
+
+func apply_fall_damage(fall_distance: float) -> float:
+	if game_mode == "creative" or fall_distance <= 3.0:
+		return 0.0
+	var damage := maxf(0.0, ceilf(fall_distance - 3.0))
+	if receive_damage(damage, "fall"):
+		return damage
+	return 0.0
+
+func eat_selected_item() -> bool:
+	if game_mode != "survival" or inventory == null:
+		return false
+	var stack: Dictionary = inventory.get_selected()
+	var item_id := int(stack.get("id", 0))
+	var count := int(stack.get("count", 0))
+	if item_id <= 0 or count <= 0:
+		return false
+	var registry: Variant = get_tree().root.get_node_or_null("BlockRegistry")
+	if registry == null:
+		return false
+	var definition: Dictionary = registry.get_definition(item_id)
+	var food_points := int(definition.get("food", 0))
+	if food_points <= 0 or (hunger >= 20.0 and not bool(definition.get("always_edible", false))):
+		return false
+	if not inventory.remove_item(item_id, 1):
+		return false
+	var saturation_modifier := clampf(float(definition.get("saturation_modifier", 0.0)), 0.0, 1.0)
+	hunger = minf(20.0, hunger + float(food_points))
+	food_saturation = minf(hunger, food_saturation + float(food_points) * saturation_modifier * 2.0)
+	return true
+
+func use_selected_item() -> bool:
+	if eat_selected_item():
+		return true
+	return place_target_block()
+
+func tick_survival() -> void:
+	if game_mode != "survival" or health <= 0.0:
+		return
+	set_difficulty(difficulty)
+	if difficulty == "peaceful":
+		hunger = 20.0
+		food_saturation = maxf(food_saturation, 5.0)
+		exhaustion = 0.0
+		_peaceful_regeneration_ticks += 1
+		if _peaceful_regeneration_ticks >= 20:
+			_peaceful_regeneration_ticks = 0
+			heal(1.0)
+		return
+	_peaceful_regeneration_ticks = 0
+	while exhaustion >= 4.0:
+		exhaustion -= 4.0
+		if food_saturation > 0.0:
+			food_saturation = maxf(0.0, food_saturation - 1.0)
+		elif hunger > 0.0:
+			hunger = maxf(0.0, hunger - 1.0)
+		food_saturation = minf(food_saturation, hunger)
+	if hunger >= 18.0 and health < 20.0:
+		_starvation_ticks = 0
+		_natural_regeneration_ticks += 1
+		var regen_period := 10 if food_saturation > 0.0 else 80
+		if _natural_regeneration_ticks >= regen_period:
+			_natural_regeneration_ticks = 0
+			heal(1.0)
+			add_exhaustion(6.0)
+	else:
+		_natural_regeneration_ticks = 0
+	if hunger <= 0.0:
+		_starvation_ticks += 1
+		if _starvation_ticks >= 80:
+			_starvation_ticks = 0
+			var can_starve_damage := difficulty == "hard" or (difficulty == "normal" and health > 1.0) or (difficulty == "easy" and health > 10.0)
+			if can_starve_damage:
+				receive_damage(1.0, "starvation")
+	else:
+		_starvation_ticks = 0
 
 func _raycast_target() -> Dictionary:
 	if camera == null or get_world_3d() == null:
@@ -286,7 +408,13 @@ func serialize() -> Dictionary:
 		"camera_pitch": _camera_pitch,
 		"health": health,
 		"hunger": hunger,
-		"armor_points": armor_points,
+		"food_saturation": food_saturation,
+		"exhaustion": exhaustion,
+		"difficulty": difficulty,
+		"natural_regeneration_ticks": _natural_regeneration_ticks,
+		"starvation_ticks": _starvation_ticks,
+		"peaceful_regeneration_ticks": _peaceful_regeneration_ticks,
+		"fall_distance": _fall_distance,
 		"creative_flight_enabled": creative_flight_enabled
 	}
 
@@ -299,5 +427,11 @@ func deserialize(state: Dictionary) -> void:
 	camera.rotation.x = _camera_pitch
 	health = clampf(float(state.get("health", 20.0)), 0.0, 20.0)
 	hunger = clampf(float(state.get("hunger", 20.0)), 0.0, 20.0)
-	armor_points = clampi(int(state.get("armor_points", 0)), 0, 20)
+	food_saturation = clampf(float(state.get("food_saturation", 5.0)), 0.0, hunger)
+	exhaustion = clampf(float(state.get("exhaustion", 0.0)), 0.0, 40.0)
+	set_difficulty(String(state.get("difficulty", difficulty)))
+	_natural_regeneration_ticks = clampi(int(state.get("natural_regeneration_ticks", 0)), 0, 79)
+	_starvation_ticks = clampi(int(state.get("starvation_ticks", 0)), 0, 79)
+	_peaceful_regeneration_ticks = clampi(int(state.get("peaceful_regeneration_ticks", 0)), 0, 19)
+	_fall_distance = maxf(0.0, float(state.get("fall_distance", 0.0)))
 	creative_flight_enabled = bool(state.get("creative_flight_enabled", false))
