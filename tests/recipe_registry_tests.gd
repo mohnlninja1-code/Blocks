@@ -25,9 +25,9 @@ func _run_tests() -> void:
 		quit(1)
 		return
 
-	var had_item := registry.items.has(9001)
+	var had_item: bool = registry.items.has(9001)
 	var old_item: Dictionary = registry.items.get(9001, {}).duplicate(true) if had_item else {}
-	var had_name := registry.by_name.has("test_item")
+	var had_name: bool = registry.by_name.has("test_item")
 	var old_name_id := int(registry.by_name.get("test_item", 0))
 	registry.items[9001] = {
 		"id": 9001,
