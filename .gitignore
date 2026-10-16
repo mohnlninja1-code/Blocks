@@ -7,3 +7,11 @@ build/
 *.tmp
 *.tmp.json
 __pycache__/
+.pytest_cache/
+# The 435 MB source archive, extracted copyrighted resources, and generated per-file manifest stay local/private.
+assets/source/
+assets/minecraft/
+assets/reference_data/
+assets/.preserved-replacements/
+assets/ASSET_EXTRACTION_MANIFEST.csv
+docs/audit-generated/
