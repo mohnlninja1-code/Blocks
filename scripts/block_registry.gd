@@ -1,12 +1,16 @@
 extends Node
 """Single source of truth for block/item metadata loaded from data JSON."""
 
+const NON_ITEM_MODEL_TEMPLATES := ["generated", "handheld", "handheld_rod", "template_banner", "template_bed", "template_shulker_box", "template_skull", "template_spawn_egg"]
+
 var blocks: Dictionary = {}
 var items: Dictionary = {}
 var by_name: Dictionary = {}
 var _materials: Dictionary = {}
 var asset_catalog_loaded := false
 var asset_catalog_counts: Dictionary = {"blocks_added": 0, "items_added": 0}
+var _source_item_model_names: Dictionary = {}
+var _source_blockstate_names: Dictionary = {}
 
 func _ready() -> void:
 	var raw_blocks := _load_json_dictionary("res://data/blocks.json")
@@ -81,6 +85,12 @@ func load_asset_catalog(resource_root: String = "res://assets/minecraft") -> Dic
 	var root_path := resource_root.trim_suffix("/")
 	var block_names := _source_names_in_folder(root_path.path_join("blockstates"))
 	var item_model_names := _source_names_in_folder(root_path.path_join("models/item"))
+	_source_item_model_names.clear()
+	_source_blockstate_names.clear()
+	for item_model_name in item_model_names:
+		_source_item_model_names[String(item_model_name)] = true
+	for source_block_name in block_names:
+		_source_blockstate_names[String(source_block_name)] = true
 	var added_blocks := 0
 	var added_items := 0
 	var next_block_id := 20000
@@ -100,6 +110,8 @@ func load_asset_catalog(resource_root: String = "res://assets/minecraft") -> Dic
 			"drop": next_block_id,
 			"stack_size": 64,
 			"runtime_catalog_only": true,
+			"creative_visible": item_model_names.has(block_name),
+			"has_item_model": item_model_names.has(block_name),
 			"behavior_status": "MODEL_AND_NAME_DISCOVERED_UNVERIFIED",
 			"source_blockstate": root_path.path_join("blockstates").path_join(block_name + ".json")
 		}
@@ -109,6 +121,8 @@ func load_asset_catalog(resource_root: String = "res://assets/minecraft") -> Dic
 		added_blocks += 1
 	var next_item_id := 50000
 	for item_name in item_model_names:
+		if item_name in NON_ITEM_MODEL_TEMPLATES:
+			continue
 		if by_name.has(item_name):
 			continue
 		while blocks.has(next_item_id) or items.has(next_item_id):
@@ -121,6 +135,8 @@ func load_asset_catalog(resource_root: String = "res://assets/minecraft") -> Dic
 			"stack_size": _infer_stack_size_for_item(item_name),
 			"category": "source_model",
 			"runtime_catalog_only": true,
+			"creative_visible": true,
+			"has_item_model": true,
 			"behavior_status": "MODEL_AND_NAME_DISCOVERED_UNVERIFIED",
 			"source_item_model": root_path.path_join("models/item").path_join(item_name + ".json")
 		}
