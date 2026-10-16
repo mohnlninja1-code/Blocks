@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["AA"],
+  "key": {"A": {"item": "minecraft:oak_planks"}},
+  "result": {"item": "minecraft:test_item", "count": 4}
+}
