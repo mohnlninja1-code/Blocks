@@ -1,29 +1,33 @@
-# Architecture — Blocks: Voxel Frontier
+# Architecture status
 
-## Engine / renderer
+## Target
 
-Godot 4.7.2 stable, GDScript, GL Compatibility. This deliberately conservative OpenGL ES-oriented Android path has not yet been executed or visually inspected here; it is a selected target, not a compatibility claim.
+Godot 4.7.2 stable, GDScript and GL Compatibility renderer. Android orientation is configured as landscape; package ID is `org.blocks.voxelfrontier`. The official Godot 4.7.2 stable release was published on 18 August 2026. The renderer/export path is a target, not a validated compatibility claim.
 
-## Services and boundaries
+## Important baseline correction
 
-- `BlockRegistry`: loads block/item registries and caches materials.
-- `SaveStore`: versioned JSON with temporary writes and last-good backup recovery.
-- `SoundBank`: capped eight-voice one-shot audio pool, selected original-pack clips and one effects-volume setting.
-- `VoxelWorld`: integer block coordinates; 16×16 horizontal chunks, packed integer storage for Y=-64…319, seeded height/cave/ore/tree generation, edit deltas, exposed-face culling, per-texture ArrayMesh surfaces and per-chunk trimesh collision.
-- `VoxelPlayer`: first-person movement, jump/sprint/sneak, Creative flight, ray-based block/mob target, mining/placement, simple health/hunger, tool durability and survival respawn.
-- `InventoryModel`: authoritative hotbar/backpack stack transactions, crafted against data-driven recipes.
-- `SandboxZombie`: supplied skin mapped to custom box meshes, walk animation, chase/wander/melee/damage/death/drop/save state.
-- `main.gd`: world/menu flow, HUD, survival/creative entry, world time/lighting, recipe and furnace UI, station state, entity spawn/save, settings/autosave.
-- `MobileControls`: multitouch joystick/look/buttons, with keyboard/mouse development inputs.
+The public GitHub tree is a 16-file bootstrap scaffold. The services described below are **planned system boundaries**, not currently present implementations. Missing source paths and evidence are recorded in `docs/BASELINE_REPORT.md` and `docs/PARITY_MATRIX.md`.
 
-## Rendering and mesh safety
+| Planned service | Intended responsibility | Current source status |
+|---|---|---|
+| BlockRegistry | 1.18.2 block/item metadata, state and tag access | Partial starter registry only; references missing `data/expanded_blocks.json` |
+| SaveStore | Versioned world/player/container/entity serialization; crash-safe rotation/recovery | Missing `scripts/save_store.gd` |
+| SoundBank | Event-to-asset mapping and bounded audio playback | Missing `scripts/sound_bank.gd` |
+| RecipeRegistry | Reference recipe loading, station/type matching, remainders/unlocks | Missing `scripts/recipe_registry.gd` |
+| VoxelWorld | Chunked world storage, state-aware mesh/collision, deterministic terrain and streaming | No runtime source file in checked-in tree |
+| VoxelPlayer | Movement, interaction, survival rules and persistence | No runtime source file in checked-in tree |
+| InventoryModel | Atomic item stacks, crafting, transfer and equipment state | No runtime source file in checked-in tree |
+| Entity runtime | Goal-driven AI, physics, attacks, drops and save state | No runtime source file in checked-in tree |
+| Main/mobile UI | Menus, game mode, HUD, touch input, pause/settings and dimension transitions | `scenes/main.tscn` references missing `scripts/main.gd` |
 
-Each chunk's visible block faces are grouped by texture/material; internal opaque faces are culled. Texture UVs stay per-texture rather than using an atlas. Pixel art uses nearest filtering; leaves use alpha scissor. There are no custom shaders, translucent fluids or glass in this milestone. When a mesh is rebuilt, its prior children are removed before the new mesh/collider is attached. Adjacent chunk meshes rebuild on stream-in/unload to reconsider boundary visibility. Source-level measures are not visual proof; the affected renderer must be inspected after Godot import/export.
+## Asset and rendering constraints
 
-## Coordinate and save rules
+The source archive is kept outside public Git until resource distribution rights are established. `tools/audit_source_archive.py` creates a hash-audited file/model/blockstate/recipe inventory from a local copy. Archive presence is not runtime integration. Model inheritance, texture indirection, element geometry, blockstate variants/multipart, transparency and context transforms need a real renderer plus visual regression evidence.
 
-Floor division handles negative chunk coordinates; local X/Z uses positive modulo. The JSON save format version is 1 and records seed/mode/time, player/inventory, block edit deltas, furnace state and the currently supported zombie state. `SaveStore` rotates through temporary/backup paths; crash/restart reliability remains untested on Android.
+## Coordinates and saves
+
+The required world range is Y=-64 through Y=319. Chunk floor division and positive local-coordinate modulo, edit deltas, block entities, inventory stacks, entities, portals and dimension-specific state must be consistent across mesh/collision, loading and saving. No matching complete runtime/save implementation is present at the inspected baseline.
 
 ## Scope discipline
 
-`docs/ASSET_USAGE.csv` maps selected assets to actual consumers. `docs/FEATURE_MATRIX.md` and `docs/KNOWN_ISSUES.md` distinguish integrated source from features not yet built. No registry/file count is used as evidence for content parity.
+Do not mark a feature VERIFIED until the source implementation, targeted tests and evidence exist. Do not treat successful export, a registry entry, or an asset-file count as proof of gameplay parity.
