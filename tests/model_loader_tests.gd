@@ -38,6 +38,8 @@ func _run_tests() -> void:
 	print("MODEL TEST CHECKPOINT 4: state variants")
 	var default_variants: Array[Dictionary] = model_loader.select_block_models("test_block", {})
 	_check(default_variants.size() == 1 and String(default_variants[0].get("model", "")) == "minecraft:block/test_block", "default variant selects expected model")
+	var default_with_unrelated_state: Array[Dictionary] = model_loader.select_block_models("test_block", {"powered": "true"})
+	_check(default_with_unrelated_state.size() == 1 and String(default_with_unrelated_state[0].get("model", "")) == "minecraft:block/test_block", "empty-key blockstate variant remains a fallback for other state properties")
 	var north_variants: Array[Dictionary] = model_loader.select_block_models("test_block", {"facing": "north"})
 	_check(north_variants.size() == 1 and int(north_variants[0].get("y", 0)) == 90, "specific selector includes state rotation")
 	var axis_first: Array[Dictionary] = model_loader.select_block_models("test_block", {"axis": "x"}, 7, Vector3i(2, 3, 4))
