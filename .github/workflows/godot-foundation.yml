@@ -25,6 +25,10 @@ on:
       - ".github/workflows/godot-foundation.yml"
   workflow_dispatch:
 
+concurrency:
+  group: godot-foundation-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -54,8 +58,8 @@ jobs:
       - name: Import project and parse resources
         run: godot --headless --editor --path . --import --quit
       - name: Run foundational engine tests
-        run: godot --headless --path . --script res://tests/run_tests.gd
+        run: timeout 180s godot --headless --path . --script res://tests/run_tests.gd
       - name: Run isolated model resolver tests
-        run: godot --headless --path . --script res://tests/model_loader_tests.gd
+        run: timeout 180s godot --headless --path . --script res://tests/model_loader_tests.gd
       - name: Smoke launch main scene
-        run: godot --headless --path . --quit-after 5
+        run: timeout 30s godot --headless --path . --quit-after 5
