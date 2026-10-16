@@ -1,0 +1,53 @@
+name: Godot foundation tests
+
+on:
+  push:
+    paths:
+      - "project.godot"
+      - "scenes/**"
+      - "scripts/**"
+      - "data/**"
+      - "tests/**"
+      - "tools/validate_project.py"
+      - ".github/workflows/godot-foundation.yml"
+  pull_request:
+    paths:
+      - "project.godot"
+      - "scenes/**"
+      - "scripts/**"
+      - "data/**"
+      - "tests/**"
+      - "tools/validate_project.py"
+      - ".github/workflows/godot-foundation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  godot-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up Godot 4.7.2 stable
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: false
+      - name: Record engine version
+        run: godot --version
+      - name: Run static project validation
+        run: python3 tools/validate_project.py
+      - name: Import project and parse resources
+        run: godot --headless --editor --path . --import --quit
+      - name: Run foundational engine tests
+        run: godot --headless --path . --script res://tests/run_tests.gd
+      - name: Smoke launch main scene
+        run: godot --headless --path . --quit-after 5
