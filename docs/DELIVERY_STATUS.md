@@ -1,23 +1,34 @@
 # Delivery status — 2026-10-16
 
-**Release readiness: BLOCKED. Full Java 1.18.2 parity is not achieved. No APK has been built or delivered.**
+**Release readiness: BLOCKED. Java 1.18.2 parity is not achieved. No Android APK has been exported, device-tested or uploaded to Dropbox.**
+
+## Live repository work
+
+- Repository: https://github.com/mohnlninja1-code/Blocks
+- Work branch: `audit/java-1.18.2-baseline-2026-10-16`
+- The `main` branch has intentionally not been overwritten.
+- Current runtime work includes a menu/HUD entry scene, simple voxel world/chunk storage/mesh/collision, player movement/interactions, inventory transactions, starter recipe parsing, save backup recovery, an optional sound-event service, a static validator, engine tests and local asset audit/extraction tools.
+- The expanded block registry file is intentionally an empty array pending real catalog reconciliation. It is not a full registry.
 
 ## Verified in this session
-- Inspected the live GitHub repository metadata, recursive tree and both visible branches.
-- Created working branch `audit/java-1.18.2-baseline-2026-10-16` from `d7d168a801d142cbe164ce1b2c1e2f4a7075f3f9`.
-- Recorded missing runtime paths and starter-catalog counts.
-- Recovered no fuller project package from the connected Dropbox content currently visible.
-- Verified the uploaded source ZIP SHA-256 and ZIP integrity.
-- Generated and checked exact audit CSVs for 14,459 archive files, 1,235 item models, 900 blockstate mapping files and 1,058 recipes; archive JSON parsing reported 8,311 valid and zero invalid JSON files.
-- Ran six Python tests against the generated audit ledgers; all six passed.
+
+- Both original public branches were inspected; both pointed to the same 16-file scaffold.
+- Supplied ZIP hash: `bd6b2db35ab6e92de254a398b30ae56b0884e7f1a9c46490af1378ecc4d18f97`; hash matched previous record; ZIP integrity passed.
+- Source inventory: 14,459 files, 532,470,059 uncompressed bytes, 8,311 valid JSON files, 1,235 item models, 1,725 block models, 900 blockstate files, 1,058 recipe files, zero invalid JSON.
+- Dropbox root/search recovery found no fuller project package or prior APK.
+- Offline archive audit CI passed 3 fixture tests.
+- Godot 4.7.2 CI passed on runtime commit `6e1b7eb1397dff5bf0a2d940788da498133e78ea`: import/parser, static validator (142 checks; 0 failures; one expected scope warning), 26 foundational tests and main-scene headless smoke launch.
+- The 26 engine tests cover starter registry loading, stack remainder/atomic cost, starter recipe matching/crafting, capacity rollback, inventory save state, save backup recovery, deterministic terrain height, streamed 3×3 region, bedrock minimum layer, negative coordinates, block edit tracking and edit persistence across regeneration.
+- Asset extraction is now a local-only, hash-gated script with conflict preservation and four offline fixture tests; the latest CI still needs to be checked after the addition of those four tests.
 
 ## Not verified / blocked
-- Complete project archive recovery.
-- Reconciliation of the named 332-mechanic and 791-item-model targets.
-- Runtime integration of models, blocks, recipes, fluids, Redstone, block entities, entities, world generation, Nether/End progression, survival systems or mobile UI.
-- Godot import/parser, scene startup and engine test scripts.
-- Android export, APK checksum, install/launch, save/reload, touch input, screenshots, visual parity, performance or long-session tests.
-- Dropbox release upload; there is no verified APK or build artifact to publish.
+
+- Full block/item/entity registries and reference-based reconciliation of the 332-mechanic/791-item-model targets.
+- Full model/blockstate/texture/sound integration; correct states, collision, textures, UVs, model transforms or visual regression.
+- Java-reference world-generation parity, structures, lighting, random/scheduled ticks, fluids, Redstone, block entities/automation, complete recipes/stations, mobs/combat, survival progression, Nether or End/Dragon.
+- Android export toolchain (matching export templates, JDK17 and SDK), APK checksum/export, install/launch, touch, suspend/resume, device screenshots, performance and memory.
+- Dropbox release artifact/link verification. No APK is available to upload, so no release upload was attempted.
 
 ## Artifact hygiene
-The original 435 MB source ZIP was read for audit only and remains byte-for-byte unchanged. It is not included in the public repository or the metadata-only audit bundle. Counts in the report describe files/resources, not completed gameplay features.
+
+The 435 MB source ZIP was read but not modified. Full third-party source resources are excluded from the public Git tree. Use `tools/prepare_assets.py` locally with the verified original ZIP to stage resources. Resource presence/extraction is not treated as implementation evidence.
