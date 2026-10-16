@@ -3,44 +3,55 @@
 ## Required target
 
 - Godot Engine 4.7.2 stable and matching Android export templates.
-- JDK 17 plus configured Android SDK/platform/build-tools.
-- GDScript and GL Compatibility renderer.
-- Android application ID `org.blocks.voxelfrontier`.
-- Landscape-only orientation.
-- Debug APK; never commit signing credentials.
+- JDK 17 plus configured Android SDK/platform/build-tools and adb.
+- GL Compatibility renderer and landscape-only orientation.
+- Application ID: org.blocks.voxelfrontier.
+- Debug APK only; never commit signing credentials.
 
-## What is currently verified
+## What is verified
 
-Godot 4.7.2 CI has successfully imported/parsed the project, run the foundational GDScript test harness (26 passed, 0 failed), and smoke-launched the main scene in headless mode:
-https://github.com/mohnlninja1-code/Blocks/actions/runs/38950885879
+The latest successful Godot workflow:
+https://github.com/mohnlninja1-code/Blocks/actions/runs/38956921930
 
-This is not an Android export or device test. The available CI workflow intentionally does not yet export an APK.
+It passed project import/parse, static validation, 7 archive/fixture tests, 29 foundational tests, 29 model resolver/renderer tests, 16 recipe/tag tests, 8 Creative catalog UI tests and the headless main-scene smoke launch.
 
-## Release blockers
+This is not an Android export or device test. The current GitHub workflow does not export an APK.
 
-The game still has only starter registries and a simple noise-driven chunk world. It lacks the correct Java 1.18.2 model/state renderer, complete item/catalog behavior, fluids/Redstone, full station/block-entity inventory, all entities/structures, Nether/End and related progression. The user-provided source pack is not committed to Git, and must be staged locally by the user/release environment first.
+## Source asset preparation
 
-Godot and `adb` were not installed in the current local authoring environment; OpenJDK 21.0.12.1 was present, rather than the documented JDK 17. So no local Android package build was performed.
+The supplied resource/data ZIP's SHA-256 is:
+bd6b2db35ab6e92de254a398b30ae56b0884e7f1a9c46490af1378ecc4d18f97
 
-## Source resource preparation
+In the same local working directory as the project, run:
 
-```sh
 python3 tools/prepare_assets.py /path/to/minecraft-assets-1.18.2.zip
-```
 
-Strict hash and ZIP integrity checks run before staging. The original ZIP remains unmodified. Extracted assets and reference data are excluded from Git by `.gitignore`. Inspect `assets/ASSET_EXTRACTION_MANIFEST.csv` for copied file hashes and statuses.
+The script verifies the ZIP/hash before staging assets/minecraft and assets/reference_data/minecraft, rejects unsafe paths, records copied-file hashes in assets/ASSET_EXTRACTION_MANIFEST.csv and preserves differing destination files before replacement. It never edits the original archive. Both the original ZIP and the extracted resources are excluded from Git.
 
-## Build commands (future release gate, not a claimed pass)
+Important: the currently connected GitHub Actions runner cannot access a ZIP that exists only in the authoring workspace. Do not build or label an APK as asset-complete until the verified archive is staged in the actual Android build workspace and included in the exported PCK/APK.
 
-```sh
+## Local build commands
+
+With Godot 4.7.2, matching export templates, JDK 17 and SDK configured:
+
 python3 -m unittest discover -s tests -p "test_*.py" -v
 python3 tools/validate_project.py
 godot --headless --editor --path . --import --quit
 godot --headless --path . --script res://tests/run_tests.gd
+godot --headless --path . --script res://tests/model_loader_tests.gd
+godot --headless --path . --script res://tests/recipe_registry_tests.gd
+godot --headless --path . --script res://tests/creative_catalog_tests.gd
 godot --headless --path . --quit-after 5
 mkdir -p build
 godot --headless --path . --export-debug "Android" build/blocks-debug.apk
 sha256sum build/blocks-debug.apk
-```
 
-The matching Android export templates, SDK/JDK configuration, non-empty APK/checksum, installation on a physical Android device/emulator, landscape/touch tests, screenshot inspection and save/reload proof are separate release gates. None of these has passed yet.
+## Release gates still outstanding
+
+1. Run asset extraction in the exact workspace used for the Android build and review the extraction manifest.
+2. Export a non-empty APK and record its SHA-256.
+3. Install/launch on an Android device or emulator in landscape mode.
+4. Test simultaneous touch movement/look, Creative catalog search/selection, placement/removal, save/reload, pause/resume and application restart.
+5. Record device screenshots, startup/render performance, memory behavior and any unresolved issues.
+
+No APK export, installation, physical-device test or release upload has passed yet.
