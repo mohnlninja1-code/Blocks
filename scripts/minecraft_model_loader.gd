@@ -34,8 +34,8 @@ func clear_cache() -> void:
 func _normalize_id(value: String, default_group: String = "block") -> String:
 	var result := value.strip_edges()
 	if result.contains(":"):
-		var namespace := result.get_slice(":", 0)
-		if namespace != "minecraft":
+		var source_namespace := result.get_slice(":", 0)
+		if source_namespace != "minecraft":
 			return ""
 		result = result.get_slice(":", 1)
 	if result.begins_with("/"):
