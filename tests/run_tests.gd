@@ -98,7 +98,7 @@ func _run_tests() -> void:
 	var test_world: Variant = world_script.new()
 	test_world.name = "WorldGenerationIntegrationTest"
 	root.add_child(test_world)
-	test_world.generate_world(1182026, 1)
+	test_world.generate_world(1182026, 1, false)
 	var height_a := int(test_world.surface_height_at(0, 0))
 	var height_b := int(test_world.surface_height_at(0, 0))
 	_check(height_a == height_b, "same seed and coordinates produce deterministic surface height")
@@ -115,7 +115,7 @@ func _run_tests() -> void:
 	var world_snapshot: Dictionary = test_world.save_state()
 	_check(world_snapshot.get("edits", []).size() == 1, "world save state contains explicit block edit delta")
 	_check(world_snapshot.get("state_edits", []).size() == 1, "world save state contains exact block-state properties")
-	_check(test_world.load_state(world_snapshot, 1), "world snapshot reload succeeds")
+	_check(test_world.load_state(world_snapshot, 1, false), "world snapshot reload succeeds")
 	_check(int(test_world.get_block_at(edit_position)) == 9, "block edit survives deterministic world regeneration and reload")
 	var restored_state: Dictionary = test_world.get_block_state_at(edit_position)
 	_check(String(restored_state.get("axis", "")) == "x" and String(restored_state.get("waterlogged", "")) == "false", "block-state properties survive world snapshot reload")
