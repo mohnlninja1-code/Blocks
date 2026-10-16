@@ -19,6 +19,13 @@ var _edits: Dictionary = {} # Vector3i -> block ID; ID 0 explicitly records a re
 var _state_edits: Dictionary = {} # Vector3i -> exact authored block-state properties.
 var _terrain_noise := FastNoiseLite.new()
 var _cave_noise := FastNoiseLite.new()
+var _continentalness_noise := FastNoiseLite.new()
+var _erosion_noise := FastNoiseLite.new()
+var _ridge_noise := FastNoiseLite.new()
+var _temperature_noise := FastNoiseLite.new()
+var _humidity_noise := FastNoiseLite.new()
+var _river_noise := FastNoiseLite.new()
+var _feature_noise := FastNoiseLite.new()
 var _stream_center := Vector2i(2147483647, 2147483647)
 var _view_radius := 1
 var _materials: Dictionary = {}
@@ -44,6 +51,7 @@ func configure_model_root(resource_root: String) -> void:
 	_model_loader = loader_script.new(resource_root)
 
 func _configure_noise(new_seed: int) -> void:
+	# Keep the earlier noise generator configured for compatibility with existing test/prototype saves.
 	_terrain_noise.seed = new_seed
 	_terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	_terrain_noise.frequency = 0.035
@@ -54,12 +62,150 @@ func _configure_noise(new_seed: int) -> void:
 	_cave_noise.frequency = 0.055
 	_cave_noise.fractal_octaves = 2
 
+	_continentalness_noise.seed = new_seed + 1013
+	_continentalness_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_continentalness_noise.frequency = 0.0022
+	_continentalness_noise.fractal_octaves = 4
+	_continentalness_noise.fractal_lacunarity = 2.0
+	_erosion_noise.seed = new_seed + 2017
+	_erosion_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_erosion_noise.frequency = 0.009
+	_erosion_noise.fractal_octaves = 3
+	_ridge_noise.seed = new_seed + 3011
+	_ridge_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_ridge_noise.frequency = 0.0065
+	_ridge_noise.fractal_octaves = 4
+	_temperature_noise.seed = new_seed + 4001
+	_temperature_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_temperature_noise.frequency = 0.0018
+	_temperature_noise.fractal_octaves = 3
+	_humidity_noise.seed = new_seed + 5003
+	_humidity_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_humidity_noise.frequency = 0.0021
+	_humidity_noise.fractal_octaves = 3
+	_river_noise.seed = new_seed + 6007
+	_river_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_river_noise.frequency = 0.008
+	_river_noise.fractal_octaves = 2
+	_feature_noise.seed = new_seed + 7001
+	_feature_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_feature_noise.frequency = 0.13
+	_feature_noise.fractal_octaves = 2
+
 func set_terrain_mode(mode_name: String) -> void:
-	terrain_mode = mode_name if mode_name in ["superflat", "noise"] else "superflat"
+	# "noise" remains available only so older prototype saves can still be loaded.
+	terrain_mode = mode_name if mode_name in ["overworld", "superflat", "noise"] else "overworld"
+
+func _climate_temperature(world_x: int, world_z: int) -> float:
+	var broad := _temperature_noise.get_noise_2d(float(world_x), float(world_z))
+	var detail := _feature_noise.get_noise_2d(float(world_x) * 0.22, float(world_z) * 0.22)
+	return clampf(broad * 0.78 + detail * 0.22, -1.0, 1.0)
+
+func _climate_humidity(world_x: int, world_z: int) -> float:
+	var broad := _humidity_noise.get_noise_2d(float(world_x), float(world_z))
+	var detail := _ridge_noise.get_noise_2d(float(world_x) * 0.37, float(world_z) * 0.37)
+	return clampf(broad * 0.8 - detail * 0.2, -1.0, 1.0)
+
+func _continentalness(world_x: int, world_z: int) -> float:
+	return _continentalness_noise.get_noise_2d(float(world_x), float(world_z))
+
+func _is_river_location(world_x: int, world_z: int) -> bool:
+	return absf(_river_noise.get_noise_2d(float(world_x), float(world_z))) < 0.045 and _continentalness(world_x, world_z) > -0.28
+
+func _overworld_surface_height(world_x: int, world_z: int) -> int:
+	var continent := _continentalness(world_x, world_z)
+	if continent < -0.48:
+		return clampi(42 + roundi((continent + 1.0) * 30.0), MIN_Y + 8, 62)
+	if _is_river_location(world_x, world_z):
+		return 60
+	if continent < -0.25:
+		return clampi(60 + roundi((continent + 0.48) * 12.0), 60, 65)
+	var erosion := _erosion_noise.get_noise_2d(float(world_x), float(world_z))
+	var ridges := _ridge_noise.get_noise_2d(float(world_x), float(world_z))
+	var local_detail := _terrain_noise.get_noise_2d(float(world_x), float(world_z))
+	var mountain_factor := maxf(0.0, ridges - 0.22) / 0.78
+	var height := 64.0 + maxf(0.0, continent + 0.25) * 35.0 + erosion * 8.0 + mountain_factor * 88.0 + local_detail * 4.0
+	return clampi(roundi(height), 58, 190)
+
+func biome_at(world_x: int, world_z: int) -> String:
+	"""Deterministic biome-family assignment using Java 1.18.2 biome names.
+	This is an explicit worldgen prototype, not a claim of vanilla noise-settings parity."""
+	var continent := _continentalness(world_x, world_z)
+	var temperature := _climate_temperature(world_x, world_z)
+	var humidity := _climate_humidity(world_x, world_z)
+	var elevation := _overworld_surface_height(world_x, world_z)
+	var ridges := _ridge_noise.get_noise_2d(float(world_x), float(world_z))
+
+	if continent < -0.48:
+		if continent < -0.68:
+			if temperature > 0.55: return "deep_lukewarm_ocean"
+			if temperature > 0.0: return "deep_ocean"
+			if temperature > -0.55: return "deep_cold_ocean"
+			return "deep_frozen_ocean"
+		if temperature > 0.62: return "warm_ocean"
+		if temperature > 0.24: return "lukewarm_ocean"
+		if temperature > -0.22: return "ocean"
+		if temperature > -0.62: return "cold_ocean"
+		return "frozen_ocean"
+	if continent < -0.28:
+		if temperature < -0.45: return "snowy_beach"
+		if elevation > 63: return "stony_shore"
+		return "beach"
+	if _is_river_location(world_x, world_z):
+		return "frozen_river" if temperature < -0.58 else "river"
+	if elevation > 145:
+		if temperature < -0.35: return "frozen_peaks"
+		if temperature < 0.15: return "jagged_peaks"
+		return "stony_peaks"
+	if elevation > 112:
+		if temperature < -0.3: return "snowy_slopes"
+		return "meadow" if humidity > -0.1 else "windswept_hills"
+	if elevation > 94 and temperature < -0.25:
+		return "grove"
+	if temperature < -0.68:
+		if humidity > 0.15: return "snowy_taiga"
+		return "ice_spikes" if ridges > 0.45 else "snowy_plains"
+	if temperature < -0.38:
+		if humidity > 0.25: return "old_growth_spruce_taiga"
+		return "taiga"
+	if temperature < -0.08:
+		if humidity > 0.45: return "old_growth_birch_forest"
+		if humidity < -0.4: return "windswept_forest"
+		return "forest"
+	if temperature < 0.35:
+		if humidity > 0.58: return "swamp"
+		if humidity > 0.2 and ridges > 0.35: return "flower_forest"
+		if humidity < -0.45: return "plains"
+		if humidity > 0.45: return "birch_forest"
+		return "plains" if ridges < 0.0 else "forest"
+	if temperature < 0.63:
+		if humidity < -0.38: return "savanna"
+		if humidity > 0.65: return "jungle" if ridges > 0.2 else "sparse_jungle"
+		if humidity > 0.32: return "forest"
+		return "savanna"
+	if humidity < -0.2:
+		return "eroded_badlands" if ridges > 0.45 else "desert"
+	if humidity < 0.1:
+		return "badlands"
+	if humidity > 0.5:
+		return "bamboo_jungle" if ridges > 0.28 else "jungle"
+	return "savanna"
+
+func _runtime_block_id(block_name: String, fallback_id: int) -> int:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		var registry: Variant = tree.root.get_node_or_null("BlockRegistry")
+		if registry != null:
+			var resolved := int(registry.block_id(block_name))
+			if resolved > 0:
+				return resolved
+	return fallback_id
 
 func surface_height_at(world_x: int, world_z: int) -> int:
 	if terrain_mode == "superflat":
 		return 3
+	if terrain_mode == "overworld":
+		return _overworld_surface_height(world_x, world_z)
 	return clampi(66 + roundi(_terrain_noise.get_noise_2d(float(world_x), float(world_z)) * 14.0), MIN_Y + 8, MAX_Y - 8)
 
 func generate_world(new_seed: int, view_radius: int = 1, build_meshes: bool = true) -> void:
@@ -178,7 +324,10 @@ func _generate_chunk_data(key: Vector2i) -> void:
 	if terrain_mode == "superflat":
 		# Minecraft Java 1.18.2 Classic Flat layers: bedrock at Y=0,
 		# dirt at Y=1..2, grass_block at Y=3, air below/above those layers.
-		for local_z in range(CHUNK_SIZE):
+		if terrain_mode == "overworld":
+		_generate_overworld_chunk_data(key)
+		return
+	for local_z in range(CHUNK_SIZE):
 			for local_x in range(CHUNK_SIZE):
 				for world_y in range(0, 4):
 					var flat_block_id := 5 if world_y == 0 else (1 if world_y == 3 else 2)
@@ -216,6 +365,159 @@ func _generate_chunk_data(key: Vector2i) -> void:
 				data[index] = block_id
 				if block_id != 0:
 					occupied[index] = true
+	chunk["data"] = data
+	chunk["occupied"] = occupied
+	_chunks[key] = chunk
+
+func _generate_overworld_chunk_data(key: Vector2i) -> void:
+	var chunk: Dictionary = _chunks[key]
+	var data: PackedInt32Array = chunk["data"]
+	var occupied: Dictionary = chunk.get("occupied", {})
+	var base_x := key.x * CHUNK_SIZE
+	var base_z := key.y * CHUNK_SIZE
+	var sea_level := 63
+	var bedrock_id := _runtime_block_id("bedrock", 5)
+	var stone_id := _runtime_block_id("stone", 3)
+	var deepslate_id := _runtime_block_id("deepslate", stone_id)
+	var grass_id := _runtime_block_id("grass_block", 1)
+	var dirt_id := _runtime_block_id("dirt", 2)
+	var sand_id := _runtime_block_id("sand", 6)
+	var gravel_id := _runtime_block_id("gravel", 7)
+	var sandstone_id := _runtime_block_id("sandstone", 17)
+	var red_sand_id := _runtime_block_id("red_sand", sand_id)
+	var red_sandstone_id := _runtime_block_id("red_sandstone", sandstone_id)
+	var terracotta_id := _runtime_block_id("terracotta", stone_id)
+	var water_id := _runtime_block_id("water", 0)
+	var snow_id := _runtime_block_id("snow", 0)
+	var coal_ore_id := _runtime_block_id("coal_ore", 11)
+	var iron_ore_id := _runtime_block_id("iron_ore", 12)
+	var gold_ore_id := _runtime_block_id("gold_ore", 13)
+	var diamond_ore_id := _runtime_block_id("diamond_ore", 14)
+
+	for local_z in range(CHUNK_SIZE):
+		for local_x in range(CHUNK_SIZE):
+			var world_x := base_x + local_x
+			var world_z := base_z + local_z
+			var biome := biome_at(world_x, world_z)
+			var surface_y := _overworld_surface_height(world_x, world_z)
+			var surface_block := grass_id
+			var subsurface_block := dirt_id
+			if biome in ["desert", "beach", "snowy_beach"]:
+				surface_block = sand_id
+				subsurface_block = sand_id
+			elif biome in ["badlands", "eroded_badlands", "wooded_badlands"]:
+				surface_block = red_sand_id if biome != "eroded_badlands" else terracotta_id
+				subsurface_block = terracotta_id
+			elif biome in ["stony_shore", "stony_peaks", "windswept_gravelly_hills"]:
+				surface_block = gravel_id if biome == "stony_shore" else stone_id
+				subsurface_block = stone_id
+			elif biome in ["ocean", "deep_ocean", "warm_ocean", "lukewarm_ocean", "cold_ocean", "frozen_ocean", "deep_lukewarm_ocean", "deep_cold_ocean", "deep_frozen_ocean", "river", "frozen_river"]:
+				surface_block = gravel_id if biome in ["deep_ocean", "deep_cold_ocean", "deep_frozen_ocean"] else sand_id
+				subsurface_block = stone_id
+			elif biome in ["windswept_hills", "jagged_peaks", "frozen_peaks"]:
+				surface_block = stone_id
+				subsurface_block = stone_id
+			for world_y in range(MIN_Y, maxi(surface_y + 1, sea_level + 1) if surface_y < sea_level else surface_y + 1):
+				if world_y > surface_y and world_y <= sea_level:
+					if water_id <= 0:
+						continue
+					var water_index := _cell_index(local_x, world_y - MIN_Y, local_z)
+					data[water_index] = water_id
+					occupied[water_index] = true
+					continue
+				if world_y > surface_y:
+					continue
+				var block_id := stone_id
+				if world_y == MIN_Y:
+					block_id = bedrock_id
+				elif world_y >= surface_y - 3:
+					block_id = subsurface_block
+				elif world_y == surface_y:
+					block_id = surface_block
+				elif world_y < 0:
+					block_id = deepslate_id
+				if world_y < surface_y - 5 and world_y > MIN_Y + 1:
+					var cave_value := _cave_noise.get_noise_3d(float(world_x), float(world_y), float(world_z))
+					if cave_value > 0.62 and world_y < surface_y - 5:
+						continue
+					var ore_value := _terrain_noise.get_noise_3d(float(world_x) * 1.7 + float(world_y), float(world_y) * 1.6, float(world_z) * 1.7)
+					if ore_value > 0.80:
+						if world_y < -48:
+							block_id = diamond_ore_id if ore_value > 0.91 else iron_ore_id
+						elif world_y < 16:
+							block_id = iron_ore_id if ore_value > 0.88 else coal_ore_id
+						else:
+							block_id = coal_ore_id if ore_value > 0.89 else block_id
+					elif ore_value < -0.83 and world_y < 32:
+						block_id = gold_ore_id
+				var index := _cell_index(local_x, world_y - MIN_Y, local_z)
+				data[index] = block_id
+				occupied[index] = true
+			if snow_id > 0 and biome in ["snowy_plains", "ice_spikes", "snowy_taiga", "old_growth_spruce_taiga", "snowy_slopes", "grove"] and surface_y < MAX_Y:
+				var snow_index := _cell_index(local_x, surface_y + 1 - MIN_Y, local_z)
+				data[snow_index] = snow_id
+				occupied[snow_index] = true
+
+	# Deterministic small tree features; candidates overlap neighboring chunk margins so canopies meet across seams.
+	var first_tree_x := floori(float(base_x - 3) / 8.0) * 8
+	var first_tree_z := floori(float(base_z - 3) / 8.0) * 8
+	for tree_z in range(first_tree_z, base_z + CHUNK_SIZE + 4, 8):
+		for tree_x in range(first_tree_x, base_x + CHUNK_SIZE + 4, 8):
+			if tree_x < base_x - 3 or tree_x > base_x + CHUNK_SIZE + 3 or tree_z < base_z - 3 or tree_z > base_z + CHUNK_SIZE + 3:
+				continue
+			if _feature_noise.get_noise_2d(float(tree_x) + 31.0, float(tree_z) - 17.0) < 0.05:
+				continue
+			var tree_biome := biome_at(tree_x, tree_z)
+			if tree_biome not in ["forest", "flower_forest", "birch_forest", "old_growth_birch_forest", "dark_forest", "taiga", "snowy_taiga", "old_growth_spruce_taiga", "old_growth_pine_taiga", "windswept_forest", "jungle", "sparse_jungle", "bamboo_jungle", "savanna", "swamp", "plains"]:
+				continue
+			var tree_y := _overworld_surface_height(tree_x, tree_z)
+			if tree_y < sea_level or biome_at(tree_x, tree_z) in ["river", "frozen_river"]:
+				continue
+			var log_name := "oak_log"
+			var leaves_name := "oak_leaves"
+			if tree_biome in ["taiga", "snowy_taiga", "old_growth_spruce_taiga", "old_growth_pine_taiga"]:
+				log_name = "spruce_log"
+				leaves_name = "spruce_leaves"
+			elif tree_biome in ["birch_forest", "old_growth_birch_forest"]:
+				log_name = "birch_log"
+				leaves_name = "birch_leaves"
+			elif tree_biome == "dark_forest":
+				log_name = "dark_oak_log"
+				leaves_name = "dark_oak_leaves"
+			elif tree_biome in ["jungle", "sparse_jungle", "bamboo_jungle"]:
+				log_name = "jungle_log"
+				leaves_name = "jungle_leaves"
+			elif tree_biome == "savanna":
+				log_name = "acacia_log"
+				leaves_name = "acacia_leaves"
+			var log_id := _runtime_block_id(log_name, _runtime_block_id("oak_log", 8))
+			var leaves_id := _runtime_block_id(leaves_name, _runtime_block_id("oak_leaves", 10))
+			var trunk_height := 4 + int(absf(_feature_noise.get_noise_2d(float(tree_x) + 101.0, float(tree_z) + 73.0)) * 3.0)
+			for trunk_y in range(tree_y + 1, mini(tree_y + trunk_height, MAX_Y)):
+				var lx := tree_x - base_x
+				var lz := tree_z - base_z
+				if lx >= 0 and lx < CHUNK_SIZE and lz >= 0 and lz < CHUNK_SIZE:
+					var trunk_index := _cell_index(lx, trunk_y - MIN_Y, lz)
+					if data[trunk_index] == 0:
+						data[trunk_index] = log_id
+						occupied[trunk_index] = true
+			for canopy_y in range(tree_y + trunk_height - 2, tree_y + trunk_height + 2):
+				var canopy_radius := 2 if canopy_y < tree_y + trunk_height else 1
+				for dz in range(-canopy_radius, canopy_radius + 1):
+					for dx in range(-canopy_radius, canopy_radius + 1):
+						if abs(dx) == canopy_radius and abs(dz) == canopy_radius and canopy_y < tree_y + trunk_height:
+							continue
+						var leaf_x := tree_x + dx
+						var leaf_z := tree_z + dz
+						var local_leaf_x := leaf_x - base_x
+						var local_leaf_z := leaf_z - base_z
+						if local_leaf_x < 0 or local_leaf_x >= CHUNK_SIZE or local_leaf_z < 0 or local_leaf_z >= CHUNK_SIZE:
+							continue
+						var leaf_y := clampi(canopy_y, MIN_Y, MAX_Y)
+						var leaf_index := _cell_index(local_leaf_x, leaf_y - MIN_Y, local_leaf_z)
+						if data[leaf_index] == 0:
+							data[leaf_index] = leaves_id
+							occupied[leaf_index] = true
 	chunk["data"] = data
 	chunk["occupied"] = occupied
 	_chunks[key] = chunk
