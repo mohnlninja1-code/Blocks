@@ -31,8 +31,8 @@ func _run_tests() -> void:
 	_check(search_control is LineEdit, "main scene constructs Creative catalog search input")
 	_check(catalog_grid is GridContainer, "main scene constructs scrollable catalog grid")
 	_check(catalog_status is Label, "catalog exposes asset/readiness status")
-	_check(mode_select is OptionButton and (mode_select as OptionButton).selected == 1, "new world defaults to Creative mode")
-	_check(world_type_select is OptionButton and (world_type_select as OptionButton).selected == 0, "new world defaults to Superflat type")
+	_check(mode_select is OptionButton and (mode_select as OptionButton).selected == 0, "new world defaults to Survival mode")
+	_check(world_type_select is OptionButton and (world_type_select as OptionButton).selected == 0, "new world defaults to biome-rich Overworld type")
 
 	var registry: Variant = root.get_node_or_null("BlockRegistry")
 	var item_catalog: Variant = root.get_node_or_null("ItemModelCatalog")
