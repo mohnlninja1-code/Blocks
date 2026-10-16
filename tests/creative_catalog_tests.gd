@@ -32,13 +32,21 @@ func _run_tests() -> void:
 	_check(catalog_status is Label, "catalog exposes asset/readiness status")
 	_check(mode_select is OptionButton and (mode_select as OptionButton).selected == 1, "new world defaults to Creative mode")
 
-	var source_counts: Dictionary = BlockRegistry.load_asset_catalog("res://tests/fixtures/minecraft")
+	var registry: Variant = root.get_node_or_null("BlockRegistry")
+	var item_catalog: Variant = root.get_node_or_null("ItemModelCatalog")
+	_check(registry != null, "block registry autoload is available")
+	_check(item_catalog != null, "item model catalog autoload is available")
+	if registry == null or item_catalog == null:
+		main_node.queue_free()
+		quit(1)
+		return
+	var source_counts: Dictionary = registry.load_asset_catalog("res://tests/fixtures/minecraft")
 	_check(int(source_counts.get("blockstate_models_found", 0)) >= 2, "registry discovers source blockstate filenames")
 	_check(int(source_counts.get("item_models_found", 0)) >= 2, "registry discovers source item model filenames")
-	_check(BlockRegistry.by_name.has("test_item"), "source item model is mapped to a selectable catalog entry")
-	_check(not BlockRegistry.by_name.has("generated"), "built-in item model templates are not exposed as inventory items")
+	_check(registry.by_name.has("test_item"), "source item model is mapped to a selectable catalog entry")
+	_check(not registry.by_name.has("generated"), "built-in item model templates are not exposed as inventory items")
 	if search_control is LineEdit and catalog_grid is GridContainer and catalog_status is Label:
-		ItemModelCatalog.set_resource_root("res://tests/fixtures/minecraft")
+		item_catalog.set_resource_root("res://tests/fixtures/minecraft")
 		main_node.call("_filter_creative_catalog", "test item")
 		await process_frame
 		_check((catalog_grid as GridContainer).get_child_count() == 1, "catalog search shows a source-discovered item model")
@@ -53,7 +61,7 @@ func _run_tests() -> void:
 		await process_frame
 		_check((catalog_grid as GridContainer).get_child_count() == 0, "unknown query removes stale catalog results")
 		_check(String((catalog_status as Label).text).contains("No matches"), "empty search result shows useful status")
-		ItemModelCatalog.set_resource_root("res://assets/minecraft")
+		item_catalog.set_resource_root("res://assets/minecraft")
 	main_node.queue_free()
 	await process_frame
 	print("CATALOG TESTS: %d passed; %d failed" % [passes, failures])
