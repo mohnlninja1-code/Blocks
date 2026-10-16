@@ -90,7 +90,9 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode >= KEY_1 and event.keycode <= KEY_9 and inventory != null:
 			var selected := int(event.keycode) - int(KEY_1)
 			inventory.set_selected(selected)
-			selected_block_id = int(inventory.get_selected().get("id", 1))
+			var selected_stack: Dictionary = inventory.get_selected()
+			selected_block_id = int(selected_stack.get("id", 0))
+			update_held_item(selected_block_id)
 
 func apply_look_delta(delta: Vector2) -> void:
 	rotation.y -= delta.x * LOOK_SENSITIVITY
@@ -274,7 +276,8 @@ func select_hotbar(index: int) -> void:
 		return
 	inventory.set_selected(index)
 	var stack: Dictionary = inventory.get_selected()
-	selected_block_id = int(stack.get("id", 1))
+	selected_block_id = int(stack.get("id", 0))
+	update_held_item(selected_block_id)
 
 func serialize() -> Dictionary:
 	return {
