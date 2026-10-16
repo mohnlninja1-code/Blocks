@@ -1,19 +1,21 @@
 # Known issues / release blockers
 
-**Release status: BLOCKED. The current branch has a tested partial foundation, not Java 1.18.2 parity and not a delivered APK.**
+**Release status: BLOCKED. The branch has a tested partial runtime, not Java 1.18.2 parity and not a delivered APK.**
 
-1. The registry still combines 19 starter block definitions and 8 starter item definitions with runtime name discovery from source blockstates/item models. The expanded-block starter file is intentionally empty. Dynamically discovered IDs are temporary local IDs, not reconciled Java registry IDs.
-2. The terrain generator is still a small seeded noise/cave/ore generator. It is not Java 1.18.2 terrain, biome, cave, ore, structure or default Superflat generation.
-3. A source model resolver and block element mesher now exist, covering parent inheritance, texture aliases, variants, weighted selections and multipart selectors. They have fixture coverage only; full-pack UV, model rotation/UV-lock, render types, tinting, transparency, lighting, occlusion, AO and visual parity remain unverified.
-4. Item icon/mesh handling now includes source texture lookup, a first-person selected-item node, block-backed element models and generated-item extrusion from supplied texture alpha. This is not a complete item renderer: all override predicates and GUI/ground/fixed/head/third-person contexts, animations, glint and reference visual comparisons remain incomplete.
-5. The Creative catalog search UI works against current registered definitions and adds results to a hotbar slot; it displays only up to 72 results per query to bound node and texture loading. With no staged source assets, icons/models are unavailable and the list contains only starter data. Full ZIP coverage and in-game selection/placement are not yet verified on a device.
-6. Source recipe JSON and nested item-tag references are now parsed, and Java cookingtime is converted to seconds. Full source-pack coverage and vanilla semantics remain incomplete, including tag replace/order behavior, optional missing dependencies, conditions, remainders, unlocks, recipe books and all station interactions.
-7. The sound-event service reads source sounds.json and referenced OGG paths, but the full archive is not staged in the GitHub runner/runtime. Entity/world/UI events, spatial audio, volume settings and complete path coverage remain unverified.
-8. Fluids, Redstone timing, block entities/automation, entity roster/AI/combat, structures, survival progression, Nether/End and Dragon progression remain unimplemented or far from parity.
-9. The supplied source ZIP and its extracted textures/models/sounds are excluded from Git. The archive's expected hash and inventory have been verified, but extracted assets are not embedded in an APK from this branch.
-10. The latest successful Godot 4.7.2 workflow passed 7 archive/fixture tests, 29 foundational tests, 29 model tests, 16 recipe/tag tests, 8 Creative catalog tests and main-scene smoke launch: https://github.com/mohnlninja1-code/Blocks/actions/runs/38956921930. These are narrow regression checks, not full-game QA.
-11. Android export/device acceptance remains blocked. The authoring environment has no Godot executable, matching Android export templates or Android SDK/adb. No APK, checksum, installation test, device screenshot or performance profile exists for this branch.
+1. **Correct defaults:** new worlds now default to Survival and the normal Overworld. Creative mode and Superflat remain optional. Legacy noise terrain is retained only for older saves.
+2. The content registry still combines starter definitions with source-name discovery. Dynamically discovered IDs are temporary local IDs, not fully reconciled Java 1.18.2 registry IDs; the 332-mechanic and 791-missing-item-model lists still need authoritative reconciliation.
+3. A new biome-aware worldgen prototype uses seeded climate and landform noise, Java 1.18.2 biome names, biome-dependent surface blocks, water at sea level, cave carving, ore placements and selected tree species. It is **not** vanilla's exact 1.18.2 multi-noise terrain, surface rules, cave carvers, ore distributions, placed features, structures or spawn algorithm.
+4. Spawn selection avoids known ocean/river biome IDs near the origin; this is only an initial safety check. Spawn suitability/collision and biome edges require tests over many reference seeds.
+5. A source model resolver and block model mesher exist, covering parent inheritance, texture aliases, variants, weighted selections and multipart selectors. They have fixture coverage only; full-pack UV, rotation/UV-lock, render layers, tinting, transparency, lighting, occlusion, AO and visual parity remain unverified.
+6. Item icon/mesh handling uses source textures and source model JSON, but full predicates/overrides and GUI/ground/fixed/head/third-person contexts, animations and glint remain incomplete.
+7. The Creative catalog works against registered definitions, caps results at 72 and selects into a hotbar slot. Full ZIP coverage and in-game selection/placement are not verified on a device.
+8. Source recipe JSON and nested item-tag references are parsed; cooker times/results are normalized. Full recipe semantics, tag replace/order behavior, optional entries, conditions, remainders, unlocks, recipe books and all stations remain incomplete.
+9. Sound-event lookup reads source `sounds.json` and referenced OGG paths, but full archive staging and live event coverage remain unverified.
+10. Fluids, tick-accurate Redstone, block entities/automation, complete entity roster/AI/combat, structures, Survival progression, Nether/End and Dragon progression remain incomplete.
+11. The ZIP's SHA and inventory are verified, but the GitHub runner is not given the private source archive and no APK includes its resources.
+12. Latest successful Godot 4.7.2 workflow passed 7 archive/fixture tests, 44 foundation tests, 29 model tests, 16 recipe/tag tests, 17 Creative catalog tests and the main-scene smoke: https://github.com/mohnlninja1-code/Blocks/actions/runs/38958535541. These are regression tests, not full-game QA.
+13. No Android export, checksum, install/launch, device screenshot, touch/save/reload, performance profile or Dropbox release exists.
 
 ## Acceptance rule
 
-Do not mark a feature as complete because the ZIP contains a similarly named JSON/PNG. Each claimed feature needs a runtime consumer plus a relevant behavior test, full-pack coverage report and, for visual/gameplay claims, reference comparison. Do not invent substitute art: missing source images should be reported as missing.
+Do not mark a feature complete just because the ZIP contains a similarly named JSON/PNG. Each claim requires a runtime consumer plus behavior test, full-pack coverage evidence and, for visual/gameplay claims, reference comparisons. Do not create substitute art; use the supplied ZIP's assets and report missing files.
