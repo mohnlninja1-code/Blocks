@@ -14,6 +14,7 @@ BlockRegistry="*res://scripts/block_registry.gd"
 SaveStore="*res://scripts/save_store.gd"
 SoundBank="*res://scripts/sound_bank.gd"
 RecipeRegistry="*res://scripts/recipe_registry.gd"
+ItemModelCatalog="*res://scripts/item_model_catalog.gd"
 
 [display]
 window/size/viewport_width=1280
