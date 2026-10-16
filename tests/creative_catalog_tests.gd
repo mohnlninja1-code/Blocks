@@ -31,7 +31,20 @@ func _run_tests() -> void:
 	_check(catalog_grid is GridContainer, "main scene constructs scrollable catalog grid")
 	_check(catalog_status is Label, "catalog exposes asset/readiness status")
 	_check(mode_select is OptionButton and (mode_select as OptionButton).selected == 1, "new world defaults to Creative mode")
+
+	var source_counts: Dictionary = BlockRegistry.load_asset_catalog("res://tests/fixtures/minecraft")
+	_check(int(source_counts.get("blockstate_models_found", 0)) >= 2, "registry discovers source blockstate filenames")
+	_check(int(source_counts.get("item_models_found", 0)) >= 2, "registry discovers source item model filenames")
+	_check(BlockRegistry.by_name.has("test_item"), "source item model is mapped to a selectable catalog entry")
+	_check(not BlockRegistry.by_name.has("generated"), "built-in item model templates are not exposed as inventory items")
 	if search_control is LineEdit and catalog_grid is GridContainer and catalog_status is Label:
+		ItemModelCatalog.set_resource_root("res://tests/fixtures/minecraft")
+		main_node.call("_filter_creative_catalog", "test item")
+		await process_frame
+		_check((catalog_grid as GridContainer).get_child_count() == 1, "catalog search shows a source-discovered item model")
+		main_node.call("_filter_creative_catalog", "multipart_block")
+		await process_frame
+		_check((catalog_grid as GridContainer).get_child_count() == 0, "blockstate-only content without an inventory item model is hidden")
 		main_node.call("_filter_creative_catalog", "stone")
 		await process_frame
 		_check((catalog_grid as GridContainer).get_child_count() > 0, "search finds registered stone-like content")
@@ -40,6 +53,7 @@ func _run_tests() -> void:
 		await process_frame
 		_check((catalog_grid as GridContainer).get_child_count() == 0, "unknown query removes stale catalog results")
 		_check(String((catalog_status as Label).text).contains("No matches"), "empty search result shows useful status")
+		ItemModelCatalog.set_resource_root("res://assets/minecraft")
 	main_node.queue_free()
 	await process_frame
 	print("CATALOG TESTS: %d passed; %d failed" % [passes, failures])
