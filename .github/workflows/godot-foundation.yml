@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: godot-foundation-${{ github.ref }}
+  group: godot-foundation-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:
