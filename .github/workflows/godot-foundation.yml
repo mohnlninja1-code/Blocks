@@ -11,6 +11,7 @@ on:
       - "tests/model_loader_tests.gd"
       - "tests/recipe_registry_tests.gd"
       - "tests/creative_catalog_tests.gd"
+      - "tests/survival_tests.gd"
       - "tests/fixtures/**"
       - "tools/validate_project.py"
       - "tools/prepare_assets.py"
@@ -67,5 +68,7 @@ jobs:
         run: timeout 60s godot --headless --path . --script res://tests/recipe_registry_tests.gd
       - name: Run Creative catalog UI tests
         run: timeout 60s godot --headless --path . --script res://tests/creative_catalog_tests.gd
+      - name: Run Survival rules tests
+        run: timeout 60s godot --headless --path . --script res://tests/survival_tests.gd
       - name: Smoke launch main scene
         run: timeout 20s godot --headless --path . --quit-after 5
