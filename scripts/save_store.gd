@@ -65,7 +65,10 @@ func _read_document(path: String) -> Dictionary:
 		return {}
 	var raw := file.get_as_text()
 	file.close()
-	var parsed: Variant = JSON.parse_string(raw)
+	var parser := JSON.new()
+	if parser.parse(raw) != OK:
+		return {}
+	var parsed: Variant = parser.data
 	if not parsed is Dictionary:
 		return {}
 	var version := int(parsed.get("format_version", 0))
