@@ -11,7 +11,7 @@ func _ready() -> void:
 
 func _reload() -> void:
 	recipes = _read_array("res://data/recipes.json")
-	smelting_recipes = _read_array("res://data/smelting_recipes.json")
+	smelting_recipes = _read_smelting("res://data/smelting_recipes.json")
 	by_id.clear()
 	for value in recipes:
 		if not value is Dictionary:
@@ -25,6 +25,31 @@ func _reload() -> void:
 			push_error("Duplicate recipe ID: %s" % recipe_id)
 			continue
 		by_id[recipe_id] = recipe
+
+func _read_smelting(path: String) -> Array:
+	if not FileAccess.file_exists(path):
+		push_warning("Optional smelting recipe source is missing: %s" % path)
+		return []
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if parsed is Array:
+		return parsed
+	if parsed is Dictionary:
+		var result: Array = []
+		for input_key in parsed:
+			var row: Variant = parsed[input_key]
+			if not row is Dictionary or not String(input_key).is_valid_int():
+				continue
+			var definition: Dictionary = row
+			result.append({
+				"input": int(input_key),
+				"output": int(definition.get("output_id", 0)),
+				"count": int(definition.get("output_count", 1)),
+				"seconds": float(definition.get("seconds", 5.0)),
+				"station": "furnace"
+			})
+		return result
+	push_error("Smelting recipe source must be an array or an object keyed by input ID: %s" % path)
+	return []
 
 func _read_array(path: String) -> Array:
 	if not FileAccess.file_exists(path):
