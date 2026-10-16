@@ -20,9 +20,14 @@ var _cave_noise := FastNoiseLite.new()
 var _stream_center := Vector2i(2147483647, 2147483647)
 var _view_radius := 1
 var _materials: Dictionary = {}
+var _model_loader: Variant
+var _state_model_basis_cache: Dictionary = {}
 
 func _ready() -> void:
 	_configure_noise(world_seed)
+	var loader_script: Script = load("res://scripts/minecraft_model_loader.gd")
+	if loader_script != null:
+		_model_loader = loader_script.new("res://assets/minecraft")
 
 func _configure_noise(new_seed: int) -> void:
 	_terrain_noise.seed = new_seed
@@ -288,6 +293,231 @@ func _append_face(surface: Dictionary, corners: Array, normal: Vector3) -> void:
 	surface["normals"] = normals
 	surface["uvs"] = uvs
 
+func _face_name_to_model_key(face: String) -> String:
+	match face:
+		"top": return "up"
+		"bottom": return "down"
+		_: return face
+
+func _model_face_normal(face: String) -> Vector3:
+	match face:
+		"top", "up": return Vector3.UP
+		"bottom", "down": return Vector3.DOWN
+		"north": return Vector3.FORWARD
+		"south": return Vector3.BACK
+		"east": return Vector3.RIGHT
+		_: return Vector3.LEFT
+
+func _model_face_corners(from_point: Vector3, to_point: Vector3, face: String) -> Array[Vector3]:
+	var f := from_point
+	var t := to_point
+	match face:
+		"top", "up":
+			return [Vector3(f.x, t.y, f.z), Vector3(f.x, t.y, t.z), Vector3(t.x, t.y, t.z), Vector3(t.x, t.y, f.z)]
+		"bottom", "down":
+			return [Vector3(f.x, f.y, f.z), Vector3(t.x, f.y, f.z), Vector3(t.x, f.y, t.z), Vector3(f.x, f.y, t.z)]
+		"north":
+			return [Vector3(f.x, f.y, f.z), Vector3(f.x, t.y, f.z), Vector3(t.x, t.y, f.z), Vector3(t.x, f.y, f.z)]
+		"south":
+			return [Vector3(f.x, f.y, t.z), Vector3(t.x, f.y, t.z), Vector3(t.x, t.y, t.z), Vector3(f.x, t.y, t.z)]
+		"east":
+			return [Vector3(t.x, f.y, f.z), Vector3(t.x, t.y, f.z), Vector3(t.x, t.y, t.z), Vector3(t.x, f.y, t.z)]
+		_:
+			return [Vector3(f.x, f.y, f.z), Vector3(f.x, f.y, t.z), Vector3(f.x, t.y, t.z), Vector3(f.x, t.y, f.z)]
+
+func _default_element_uv(face: String, from16: Vector3, to16: Vector3) -> Array[float]:
+	match face:
+		"top", "up":
+			return [from16.x, from16.z, to16.x, to16.z]
+		"bottom", "down":
+			return [from16.x, 16.0 - to16.z, to16.x, 16.0 - from16.z]
+		"north":
+			return [16.0 - to16.x, 16.0 - to16.y, 16.0 - from16.x, 16.0 - from16.y]
+		"south":
+			return [from16.x, 16.0 - to16.y, to16.x, 16.0 - from16.y]
+		"east":
+			return [16.0 - to16.z, 16.0 - to16.y, 16.0 - from16.z, 16.0 - from16.y]
+		_:
+			return [from16.z, 16.0 - to16.y, to16.z, 16.0 - from16.y]
+
+func _face_uv_corners(face: String, uv_rect: Array, rotation: int) -> Array[Vector2]:
+	if uv_rect.size() < 4:
+		return [Vector2.ZERO, Vector2.ZERO, Vector2.ONE, Vector2.ONE]
+	var u1 := float(uv_rect[0])
+	var v1 := float(uv_rect[1])
+	var u2 := float(uv_rect[2])
+	var v2 := float(uv_rect[3])
+	var result: Array[Vector2]
+	match face:
+		"top", "up":
+			result = [Vector2(u1, v1), Vector2(u1, v2), Vector2(u2, v2), Vector2(u2, v1)]
+		"bottom", "down":
+			result = [Vector2(u1, v2), Vector2(u2, v2), Vector2(u2, v1), Vector2(u1, v1)]
+		"north":
+			result = [Vector2(u2, v2), Vector2(u2, v1), Vector2(u1, v1), Vector2(u1, v2)]
+		"south":
+			result = [Vector2(u1, v2), Vector2(u2, v2), Vector2(u2, v1), Vector2(u1, v1)]
+		"east":
+			result = [Vector2(u2, v2), Vector2(u2, v1), Vector2(u1, v1), Vector2(u1, v2)]
+		_:
+			result = [Vector2(u1, v2), Vector2(u2, v2), Vector2(u2, v1), Vector2(u1, v1)]
+	var center := Vector2((u1 + u2) * 0.5, (v1 + v2) * 0.5)
+	var quarter_turns := posmod(roundi(float(rotation) / 90.0), 4)
+	for index in range(result.size()):
+		var offset := result[index] - center
+		for _turn in range(quarter_turns):
+			offset = Vector2(-offset.y, offset.x)
+		result[index] = (center + offset) / 16.0
+	return result
+
+func _basis_for_model_rotation(model: Dictionary) -> Basis:
+	var x_angle := deg_to_rad(float(int(model.get("blockstate_rotation_x", 0))))
+	var y_angle := deg_to_rad(float(int(model.get("blockstate_rotation_y", 0))))
+	var z_angle := deg_to_rad(float(int(model.get("blockstate_rotation_z", 0))))
+	return Basis(Vector3.BACK, z_angle) * Basis(Vector3.UP, y_angle) * Basis(Vector3.RIGHT, x_angle)
+
+func _element_rotation(element: Dictionary) -> Dictionary:
+	var rotation: Variant = element.get("rotation", {})
+	if not rotation is Dictionary:
+		return {"enabled": false, "origin": Vector3(0.5, 0.5, 0.5), "basis": Basis.IDENTITY, "axis": ""}
+	var origin_values: Variant = rotation.get("origin", [8, 8, 8])
+	if not origin_values is Array or origin_values.size() < 3:
+		origin_values = [8, 8, 8]
+	var origin := Vector3(float(origin_values[0]), float(origin_values[1]), float(origin_values[2])) / 16.0
+	var axis_name := String(rotation.get("axis", "y"))
+	var axis := Vector3.UP
+	match axis_name:
+		"x": axis = Vector3.RIGHT
+		"z": axis = Vector3.BACK
+	var angle := deg_to_rad(float(rotation.get("angle", 0.0)))
+	return {"enabled": true, "origin": origin, "basis": Basis(axis, angle), "axis": axis_name, "angle": angle, "rescale": bool(rotation.get("rescale", false))}
+
+func _transform_model_corner(corner: Vector3, local_x: int, y_index: int, local_z: int, element_rotation: Dictionary, block_rotation: Basis) -> Vector3:
+	var result := corner
+	if bool(element_rotation.get("enabled", false)):
+		var origin: Vector3 = element_rotation.get("origin", Vector3(0.5, 0.5, 0.5))
+		var relative := result - origin
+		if bool(element_rotation.get("rescale", false)):
+			var rescale_value := 1.0 / maxf(0.001, cos(float(element_rotation.get("angle", 0.0))))
+			match String(element_rotation.get("axis", "y")):
+				"x":
+					relative.y *= rescale_value
+					relative.z *= rescale_value
+				"z":
+					relative.x *= rescale_value
+					relative.y *= rescale_value
+				_:
+					relative.x *= rescale_value
+					relative.z *= rescale_value
+		result = origin + (element_rotation.get("basis", Basis.IDENTITY) as Basis) * relative
+	result = Vector3(0.5, 0.5, 0.5) + block_rotation * (result - Vector3(0.5, 0.5, 0.5))
+	return Vector3(local_x, y_index, local_z) + result
+
+func _model_face_cull_offset(cullface: String, block_rotation: Basis) -> Vector3i:
+	var direction := Vector3.ZERO
+	match cullface:
+		"down": direction = Vector3.DOWN
+		"up": direction = Vector3.UP
+		"north": direction = Vector3.FORWARD
+		"south": direction = Vector3.BACK
+		"east": direction = Vector3.RIGHT
+		"west": direction = Vector3.LEFT
+		_: return Vector3i.ZERO
+	var rotated := block_rotation * direction
+	return Vector3i(roundi(rotated.x), roundi(rotated.y), roundi(rotated.z))
+
+func _ensure_model_surface(surfaces: Dictionary, surface_key: String, material: Material) -> Dictionary:
+	if not surfaces.has(surface_key):
+		surfaces[surface_key] = {"vertices": [], "normals": [], "uvs": [], "material": material}
+	return surfaces[surface_key]
+
+func _append_model_element_faces(surfaces: Dictionary, block_id: int, block_point: Vector3i, local_x: int, y_index: int, local_z: int, element: Dictionary, model: Dictionary) -> int:
+	var from_value: Variant = element.get("from", [0, 0, 0])
+	var to_value: Variant = element.get("to", [16, 16, 16])
+	if not from_value is Array or not to_value is Array or from_value.size() < 3 or to_value.size() < 3:
+		return 0
+	var from16 := Vector3(float(from_value[0]), float(from_value[1]), float(from_value[2]))
+	var to16 := Vector3(float(to_value[0]), float(to_value[1]), float(to_value[2]))
+	var from_point := from16 / 16.0
+	var to_point := to16 / 16.0
+	var rotation_info := _element_rotation(element)
+	var block_rotation := _basis_for_model_rotation(model)
+	var faces: Variant = element.get("faces", {})
+	var textures: Dictionary = model.get("textures", {})
+	if not faces is Dictionary:
+		return 0
+	var registry: Variant = get_tree().root.get_node_or_null("BlockRegistry")
+	var block_definition: Dictionary = registry.get_definition(block_id) if registry != null else {}
+	var appended_faces := 0
+	var model_face_names := ["up", "down", "north", "south", "east", "west"]
+	for face in model_face_names:
+		if not faces.has(face) or not faces[face] is Dictionary:
+			continue
+		var face_definition: Dictionary = faces[face]
+		var cullface := String(face_definition.get("cullface", ""))
+		if not cullface.is_empty():
+			var cull_offset := _model_face_cull_offset(cullface, block_rotation)
+			if cull_offset != Vector3i.ZERO and get_block_at(block_point + cull_offset) != 0:
+				continue
+		var texture_reference := String(face_definition.get("texture", ""))
+		var texture_path := String(_model_loader.resolve_texture(texture_reference, textures)) if _model_loader != null else ""
+		var has_texture := not texture_path.is_empty() and ResourceLoader.exists(texture_path)
+		var alpha_scissor := bool(block_definition.get("alpha_scissor", false))
+		var material: Material
+		var surface_key: String
+		if has_texture and registry != null and registry.has_method("material_for_texture"):
+			material = registry.material_for_texture(texture_path, alpha_scissor)
+			surface_key = texture_path + ("|cutout" if alpha_scissor else "|opaque")
+		else:
+			var fallback_face := String(face)
+			if fallback_face == "up": fallback_face = "top"
+			elif fallback_face == "down": fallback_face = "bottom"
+			material = _material_for_face(block_id, fallback_face)
+			surface_key = "fallback:%d:%s" % [block_id, fallback_face]
+		var surface: Dictionary = _ensure_model_surface(surfaces, surface_key, material)
+		var corners := _model_face_corners(from_point, to_point, face)
+		var uv_values: Variant = face_definition.get("uv", _default_element_uv(face, from16, to16))
+		if not uv_values is Array or uv_values.size() < 4:
+			uv_values = _default_element_uv(face, from16, to16)
+		var face_uvs := _face_uv_corners(face, uv_values, int(face_definition.get("rotation", 0)))
+		var face_normal := block_rotation * rotation_info["basis"] * _model_face_normal(face)
+		if face_normal.length_squared() > 0.0:
+			face_normal = face_normal.normalized()
+		var vertices: Array = surface["vertices"]
+		var normals: Array = surface["normals"]
+		var uvs: Array = surface["uvs"]
+		for vertex_index in TRIANGLE_ORDER:
+			vertices.append(_transform_model_corner(corners[vertex_index], local_x, y_index, local_z, rotation_info, block_rotation))
+			normals.append(face_normal)
+			uvs.append(face_uvs[vertex_index])
+		surface["vertices"] = vertices
+		surface["normals"] = normals
+		surface["uvs"] = uvs
+		surfaces[surface_key] = surface
+		appended_faces += 1
+	return appended_faces
+
+func _append_model_block(surfaces: Dictionary, block_id: int, block_point: Vector3i, local_x: int, y_index: int, local_z: int) -> int:
+	if _model_loader == null:
+		return 0
+	var registry: Variant = get_tree().root.get_node_or_null("BlockRegistry")
+	if registry == null:
+		return 0
+	var definition: Dictionary = registry.get_definition(block_id)
+	var block_name := String(definition.get("name", ""))
+	if block_name.is_empty():
+		return 0
+	var models: Array[Dictionary] = _model_loader.resolve_block_models(block_name, {}, world_seed, block_point)
+	var appended_faces := 0
+	for model in models:
+		var elements: Variant = model.get("elements", [])
+		if not elements is Array:
+			continue
+		for element in elements:
+			if element is Dictionary:
+				appended_faces += _append_model_element_faces(surfaces, block_id, block_point, local_x, y_index, local_z, element, model)
+	return appended_faces
+
 func _rebuild_chunk(key: Vector2i) -> void:
 	if not _chunks.has(key):
 		return
@@ -312,6 +542,9 @@ func _rebuild_chunk(key: Vector2i) -> void:
 					continue
 				var world_x := base_x + local_x
 				var point := Vector3i(world_x, world_y, world_z)
+				var model_face_count := _append_model_block(surfaces, block_id, point, local_x, y_index, local_z)
+				if model_face_count > 0:
+					continue
 				for face_index in range(FACE_NAMES.size()):
 					var face_offset: Vector3i = FACE_OFFSETS[face_index]
 					var adjacent: Vector3i = point + face_offset
@@ -320,7 +553,7 @@ func _rebuild_chunk(key: Vector2i) -> void:
 					var face := String(FACE_NAMES[face_index])
 					var surface_key := "%d:%s" % [block_id, face]
 					if not surfaces.has(surface_key):
-						surfaces[surface_key] = {"block_id": block_id, "face": face, "vertices": [], "normals": [], "uvs": []}
+						surfaces[surface_key] = {"block_id": block_id, "face": face, "vertices": [], "normals": [], "uvs": [], "material": _material_for_face(block_id, face)}
 					var surface: Dictionary = surfaces[surface_key]
 					_append_face(surface, _face_corners(local_x, y_index, local_z, face), FACE_NORMALS[face_index])
 					surfaces[surface_key] = surface
@@ -335,7 +568,7 @@ func _rebuild_chunk(key: Vector2i) -> void:
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(surface["normals"])
 		arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(surface["uvs"])
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, _material_for_face(int(surface["block_id"]), String(surface["face"])))
+		mesh.surface_set_material(mesh.get_surface_count() - 1, surface["material"] as Material)
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.name = "TerrainMesh"
 	mesh_instance.mesh = mesh
