@@ -1,20 +1,19 @@
 # Known issues / release blockers
 
-**Release status: BLOCKED. The current branch has a tested foundation, not Java 1.18.2 parity and not a delivered APK.**
+**Release status: BLOCKED. The current branch has a tested partial foundation, not Java 1.18.2 parity and not a delivered APK.**
 
-1. Catalog scope remains tiny: 19 starter blocks and 8 starter items. `data/expanded_blocks.json` is deliberately empty, not a reconstructed registry.
-2. `scripts/voxel_world.gd` currently uses a small seeded noise-based terrain/cave/ore generator; it is not Java 1.18.2 terrain, biome, cave, ore or structure generation.
-3. World meshing currently handles cube-shaped starter blocks and face texture fields/fallback colors, not the Minecraft model-parent/blockstate/multipart renderer. Most source assets are not staged in the runtime tree until locally extracted, and visual output has not been inspected.
-4. The item-model renderer for GUI, hand, dropped item and third-person contexts is not implemented.
-5. Fluid simulation, Redstone timing, all block-entity inventories/automation, most recipes/stations and recipe tags/unlocks/remainders are incomplete.
-6. The complete entity roster, goal-based AI/pathfinding, combat/status effects, drops/equipment/persistence and spawn controls are absent.
-7. Nether/End generation, portals, travel, fortress/bastion, dragon fight, gateways, city/ship and progression are not implemented.
-8. Survival rules are incomplete; the current health/hunger values are only starter UI/player state.
-9. Android assets need local extraction and packaging rules. Full source assets must not be committed publicly without established distribution rights.
-10. The reported 332 missing mechanics and 791 missing item models have no named target lists recovered. Archive counts are not a substitute for reconciling the IDs.
-11. Godot CI on run 38950885879 passed import, project parse, 142 static checks (0 failures, one asset-scope warning), 26 foundational tests and main-scene smoke launch. Latest asset-prep fixture CI must be inspected separately after the latest workflow changes.
-12. No Android APK export, package checksum, install/launch, device touch/input, save/reload, visual review or performance profile is evidenced. Dropbox has no verified build release from this session.
+1. The registry still combines 19 starter block definitions and 8 starter item definitions with runtime name discovery from source blockstates/item models. The expanded-block starter file is intentionally empty. Dynamically discovered IDs are temporary local IDs, not reconciled Java registry IDs.
+2. The terrain generator is still a small seeded noise/cave/ore generator. It is not Java 1.18.2 terrain, biome, cave, ore, structure or default Superflat generation.
+3. A source model resolver and block element mesher now exist, covering parent inheritance, texture aliases, variants, weighted selections and multipart selectors. They have fixture coverage only; full-pack UV, model rotation/UV-lock, render types, tinting, transparency, lighting, occlusion, AO and visual parity remain unverified.
+4. Item icon/mesh handling now includes source texture lookup, a first-person selected-item node, block-backed element models and generated-item extrusion from supplied texture alpha. This is not a complete item renderer: all override predicates and GUI/ground/fixed/head/third-person contexts, animations, glint and reference visual comparisons remain incomplete.
+5. The Creative catalog search UI works against current registered definitions and adds results to a hotbar slot; it displays only up to 72 results per query to bound node and texture loading. With no staged source assets, icons/models are unavailable and the list contains only starter data. Full ZIP coverage and in-game selection/placement are not yet verified on a device.
+6. Source recipe JSON and nested item-tag references are now parsed, and Java cookingtime is converted to seconds. Full source-pack coverage and vanilla semantics remain incomplete, including tag replace/order behavior, optional missing dependencies, conditions, remainders, unlocks, recipe books and all station interactions.
+7. The sound-event service reads source sounds.json and referenced OGG paths, but the full archive is not staged in the GitHub runner/runtime. Entity/world/UI events, spatial audio, volume settings and complete path coverage remain unverified.
+8. Fluids, Redstone timing, block entities/automation, entity roster/AI/combat, structures, survival progression, Nether/End and Dragon progression remain unimplemented or far from parity.
+9. The supplied source ZIP and its extracted textures/models/sounds are excluded from Git. The archive's expected hash and inventory have been verified, but extracted assets are not embedded in an APK from this branch.
+10. The latest successful Godot 4.7.2 workflow passed 7 archive/fixture tests, 29 foundational tests, 29 model tests, 16 recipe/tag tests, 8 Creative catalog tests and main-scene smoke launch: https://github.com/mohnlninja1-code/Blocks/actions/runs/38956921930. These are narrow regression checks, not full-game QA.
+11. Android export/device acceptance remains blocked. The authoring environment has no Godot executable, matching Android export templates or Android SDK/adb. No APK, checksum, installation test, device screenshot or performance profile exists for this branch.
 
-## Known foundations risk
+## Acceptance rule
 
-The successful smoke test starts the main menu, but the newly created world's full visual output has not been rendered and inspected on a real graphical renderer/device. Treat startup, chunk-generation assertions and menu scene load as narrow tests, not proof the gameplay is crash-free or visually correct.
+Do not mark a feature as complete because the ZIP contains a similarly named JSON/PNG. Each claimed feature needs a runtime consumer plus a relevant behavior test, full-pack coverage report and, for visual/gameplay claims, reference comparison. Do not invent substitute art: missing source images should be reported as missing.
