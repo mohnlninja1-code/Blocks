@@ -629,8 +629,11 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	if saved.has("player_state") and saved["player_state"] is Dictionary:
 		player.deserialize(saved["player_state"])
 	else:
-		var terrain_height := int(world.surface_height_at(0, 0))
-		player.global_position = Vector3(0.5, terrain_height + 2.0, 0.5)
+		if world.terrain_mode == "overworld":
+			player.global_position = world.find_spawn_position(Vector2i.ZERO, 16)
+		else:
+			var terrain_height := int(world.surface_height_at(0, 0))
+			player.global_position = Vector3(0.5, terrain_height + 2.0, 0.5)
 	player.select_hotbar(int(inventory.selected_hotbar_index))
 	_is_menu_visible = false
 	_menu_root.visible = false
