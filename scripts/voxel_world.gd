@@ -264,6 +264,30 @@ func set_block_at(point: Vector3i, block_id: int) -> bool:
 		_rebuild_chunk(Vector2i(key.x, key.y + 1))
 	return true
 
+func get_block_state_at(point: Vector3i) -> Dictionary:
+	return (_state_edits.get(point, {}) as Dictionary).duplicate(true)
+
+func set_block_state_at(point: Vector3i, properties: Dictionary) -> bool:
+	var block_id := get_block_at(point)
+	if block_id <= 0:
+		return false
+	var clean_state: Dictionary = {}
+	for key_value in properties:
+		var property_name := String(key_value).strip_edges()
+		var property_value := String(properties[key_value]).strip_edges()
+		if property_name.is_empty() or property_name.contains("=") or property_name.contains(","):
+			continue
+		if property_value.is_empty():
+			continue
+		clean_state[property_name] = property_value
+	if clean_state.is_empty():
+		_state_edits.erase(point)
+	else:
+		_state_edits[point] = clean_state
+	var chunk_key := Vector2i(floori(point.x / float(CHUNK_SIZE)), floori(point.z / float(CHUNK_SIZE)))
+	_rebuild_chunk(chunk_key)
+	return true
+
 func is_solid_at(point: Vector3i) -> bool:
 	var id := get_block_at(point)
 	if id == 0:
