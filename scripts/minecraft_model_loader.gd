@@ -223,6 +223,53 @@ func _selector_matches(selector: String, states: Dictionary) -> bool:
 			return false
 	return true
 
+func _default_variant_key(variants: Dictionary) -> String:
+	var preferences := {
+		"axis": "y", "facing": "north", "half": "lower", "part": "foot",
+		"open": "false", "powered": "false", "lit": "false", "waterlogged": "false",
+		"snowy": "false", "age": "0", "level": "0", "shape": "north_south",
+		"rotation": "0", "face": "wall", "attachment": "floor", "hanging": "false",
+		"berries": "false", "moisture": "0", "distance": "1", "attached": "false",
+		"conditional": "false", "persistent": "false", "in_wall": "false",
+		"hinge": "left", "enabled": "true", "triggered": "false", "occupied": "false",
+		"signal_fire": "false", "type": "bottom", "layers": "1", "bites": "0",
+		"candles": "1", "eggs": "1", "cracked": "false", "unstable": "false",
+		"extended": "false", "eye": "false", "north": "none", "east": "none",
+		"south": "none", "west": "none", "up": "false"
+	}
+	var best_key := ""
+	var best_score := -1
+	for key_value in variants.keys():
+		var selector := String(key_value)
+		if selector.is_empty():
+			return ""
+		var score := 0
+		var rejected := false
+		for term in selector.split(",", false):
+			var pair := term.split("=", false, 2)
+			if pair.size() != 2:
+				rejected = true
+				break
+			var state_name := String(pair[0])
+			var state_value := String(pair[1])
+			if preferences.has(state_name):
+				if state_value == String(preferences[state_name]):
+					score += 2
+				else:
+					rejected = true
+					break
+			else:
+				# Unrecognized dimensions should not beat known Java default values.
+				score -= 1
+		if not rejected and score > best_score:
+			best_key = selector
+			best_score = score
+	if best_score >= 0:
+		return best_key
+	if not variants.is_empty():
+		return String(variants.keys()[0])
+	return ""
+
 func _pick_weighted_variant(value: Variant, seed: int, position: Vector3i) -> Dictionary:
 	if value is Dictionary:
 		return value.duplicate(true)
@@ -299,10 +346,12 @@ func select_block_models(block_name: String, states: Dictionary = {}, seed: int 
 			if not variant.is_empty():
 				selected.append(variant)
 	if selected.is_empty() and variants is Dictionary and not variants.is_empty() and states.is_empty() and not variants.has(""):
-		var first_variant: Variant = variants[variants.keys()[0]]
-		var fallback := _pick_weighted_variant(first_variant, seed, position)
-		if not fallback.is_empty():
-			selected.append(fallback)
+		var default_key := _default_variant_key(variants)
+		if variants.has(default_key):
+			var default_value: Variant = variants[default_key]
+			var fallback := _pick_weighted_variant(default_value, seed, position)
+			if not fallback.is_empty():
+				selected.append(fallback)
 	var multipart: Variant = blockstate.get("multipart", [])
 	if multipart is Array:
 		for part in multipart:
