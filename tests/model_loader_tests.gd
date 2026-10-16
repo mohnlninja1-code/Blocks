@@ -109,6 +109,19 @@ func _run_tests() -> void:
 				break
 		_check(complete_surface_geometry, "each emitted model face has two triangles and six vertices")
 	render_world.queue_free()
+	print("MODEL TEST CHECKPOINT 8: item model scene node")
+	var item_catalog: Variant = root.get_node_or_null("ItemModelCatalog")
+	if item_catalog != null and registry != null:
+		item_catalog.set_resource_root("res://tests/fixtures/minecraft")
+		var item_node: Node3D = load("res://scripts/item_model_renderer.gd").new().create_item_node(9000, "gui")
+		_check(item_node != null, "item renderer creates a node from catalog model data")
+		var item_mesh: MeshInstance3D = item_node.get_node_or_null("ItemModel") as MeshInstance3D
+		_check(item_mesh != null and item_mesh.mesh != null, "block-backed item inherits element geometry for GUI context")
+		_check(item_mesh.mesh.get_surface_count() == 6, "block-backed item mesh keeps six model face surfaces")
+		item_node.free()
+		item_catalog.set_resource_root("res://assets/minecraft")
+	else:
+		_check(false, "ItemModelCatalog autoload is available for item render integration tests")
 	if registry != null:
 		if had_test_definition:
 			registry.blocks[9000] = saved_test_definition
