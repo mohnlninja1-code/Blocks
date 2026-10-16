@@ -588,6 +588,7 @@ func _refresh_hud() -> void:
 	_health_label.text = "♥ %d/20     FOOD %d/20" % [roundi(player.health), roundi(player.hunger)]
 	var selected: Dictionary = inventory.get_selected()
 	var selected_id := int(selected.get("id", 0))
+	player.update_held_item(selected_id)
 	_selected_label.text = "Selected: %s" % (BlockRegistry.get_display_name(selected_id) if selected_id > 0 else "Empty")
 	for index in range(mini(9, _hotbar_buttons.size())):
 		var stack: Dictionary = inventory.get_slot(index)
