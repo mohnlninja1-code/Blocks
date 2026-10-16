@@ -1,5 +1,5 @@
 ; Blocks — original voxel sandbox project
-; Engine target: Godot 4.7.2 stable.
+; Engine target pinned by docs and CI: Godot 4.7.2 stable.
 config_version=5
 
 [application]
@@ -13,12 +13,14 @@ run/max_fps=60
 BlockRegistry="*res://scripts/block_registry.gd"
 SaveStore="*res://scripts/save_store.gd"
 SoundBank="*res://scripts/sound_bank.gd"
+RecipeRegistry="*res://scripts/recipe_registry.gd"
 
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/window_width_override=1280
 window/size/window_height_override=720
+window/handheld/orientation=0
 window/stretch/mode="canvas_items"
 
 [rendering]
