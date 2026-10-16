@@ -80,7 +80,7 @@ func generate_world(new_seed: int, view_radius: int = 1, build_meshes: bool = tr
 
 func load_state(state: Dictionary, view_radius: int = 1, build_meshes: bool = true) -> bool:
 	var new_seed := int(state.get("seed", 1))
-	set_terrain_mode(String(state.get("terrain_mode", terrain_mode)))
+	set_terrain_mode(String(state.get("terrain_mode", "noise")))
 	generate_world(new_seed, view_radius, build_meshes)
 	var raw_edits: Variant = state.get("edits", [])
 	if not raw_edits is Array:
