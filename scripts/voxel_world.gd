@@ -13,7 +13,7 @@ const TRIANGLE_ORDER := [0, 1, 2, 0, 2, 3]
 const FACE_UVS := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
 
 var world_seed: int = 1
-var terrain_mode := "superflat" # Default Java 1.18.2 Classic Flat preset; noise remains experimental.
+var terrain_mode := "overworld" # Java 1.18.2 default world type; Superflat remains an optional preset.
 var _chunks: Dictionary = {}
 var _edits: Dictionary = {} # Vector3i -> block ID; ID 0 explicitly records a removed block.
 var _state_edits: Dictionary = {} # Vector3i -> exact authored block-state properties.
