@@ -1,0 +1,7 @@
+{
+  "multipart": [
+    {"apply": {"model": "minecraft:block/test_block"}},
+    {"when": {"facing": "north"}, "apply": {"model": "minecraft:block/test_rotated"}},
+    {"when": {"OR": [{"powered": "true"}, {"facing": "east"}]}, "apply": {"model": "minecraft:block/test_rotated", "y": 90}}
+  ]
+}
