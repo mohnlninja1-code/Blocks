@@ -1,40 +1,35 @@
-# Android build
+# Android build status and prerequisites
 
-## Target toolchain
+## Required target
 
-- Godot Engine **4.7.2 stable** with matching export templates.
-- JDK 17 and Android SDK platform/build-tools installed on runner/editor.
-- GDScript; no custom native extensions.
-- Android application ID `org.blocks.voxelfrontier`; display name `Blocks: Voxel Frontier`.
-- Debug APK only. Release signing keys/passwords are not in source control.
+- Godot Engine 4.7.2 stable and matching export templates.
+- JDK 17 and configured Android SDK/build-tools.
+- GDScript; GL Compatibility.
+- Android application ID `org.blocks.voxelfrontier`.
+- Landscape-only orientation.
+- Debug APK only; do not put signing secrets in Git.
 
-## Local checks
+The official Godot archive confirms 4.7.2 stable was released on 18 August 2026: https://godotengine.org/download/archive/4.7.2-stable/.
+
+## Current blocker
+
+The current public tree is missing `scripts/main.gd`, `scripts/save_store.gd`, `scripts/sound_bank.gd`, `scripts/recipe_registry.gd`, and `data/expanded_blocks.json`. It has no complete runtime, no tests and no Android CI workflow. Consequently the export preset alone cannot produce a playable game and no APK is claimed as built.
+
+In the current execution environment, Godot and `adb` were not found; OpenJDK 21.0.12.1 was present, not the required JDK 17. The supplied asset ZIP is not copied into the public repository.
+
+## Intended build gates (not yet passes)
 
 ```sh
-python3 tools/prepare_assets.py --force
+python3 tools/audit_source_archive.py /path/to/minecraft-assets-1.18.2.zip --out docs/audit-generated
 python3 tools/validate_project.py
 godot --headless --editor --path . --import --quit
 godot --headless --path . --script res://tests/run_tests.gd
 godot --headless --path . --quit-after 5
-```
-
-## Export
-
-Configure the Android SDK path and Java SDK path in Godot Editor Settings and install the matching export templates, then run:
-
-```sh
 mkdir -p build
 godot --headless --path . --export-debug "Android" build/blocks-debug.apk
+sha256sum build/blocks-debug.apk
 ```
 
-Expected artifact: `build/blocks-debug.apk`. The GitHub Actions artifact is named `blocks-android-debug`. An APK export only proves packaging success; it does not prove game coverage, visual correctness or Android device compatibility.
+The project validator and engine test script must be created/recovered and the missing runtime fixed before expecting these commands to pass. Install and inspect the APK on an Android device/emulator; APK export alone does not establish device compatibility, visual correctness or parity.
 
-## CI implementation
-
-The workflow downloads the Godot 4.7.2 Linux binary and matching export templates, configures Java/Android SDK, reconstructs the 75-file selected asset bundle, validates JSON/resource references, runs the test script and smoke startup, exports APK and uploads it. The first hosted workflow run is the required evidence before promoting Godot test/export statuses.
-
-## Known environment limitation
-
-Godot and matching export templates were unavailable locally when this project was created; no local Godot parser/test execution, APK installation, Android input/session test or renderer screenshot review is claimed.
-
-Official references: [Godot 4.7.2 stable](https://godotengine.org/download/archive/4.7.2-stable/), [exporting projects](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_projects.html), [Android export setup](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_android.html).
+No Godot import/parser run, engine test run, APK export, device install, screenshot inspection or performance profile has passed in this session.
