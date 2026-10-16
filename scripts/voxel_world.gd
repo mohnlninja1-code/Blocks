@@ -25,9 +25,13 @@ var _state_model_basis_cache: Dictionary = {}
 
 func _ready() -> void:
 	_configure_noise(world_seed)
-	var loader_script: Script = load("res://scripts/minecraft_model_loader.gd")
-	if loader_script != null:
-		_model_loader = loader_script.new("res://assets/minecraft")
+	var blockstate_root := ProjectSettings.globalize_path("res://assets/minecraft/blockstates")
+	if DirAccess.dir_exists_absolute(blockstate_root):
+		var loader_script: Script = load("res://scripts/minecraft_model_loader.gd")
+		if loader_script != null:
+			_model_loader = loader_script.new("res://assets/minecraft")
+	else:
+		_model_loader = null
 
 func _configure_noise(new_seed: int) -> void:
 	_terrain_noise.seed = new_seed
