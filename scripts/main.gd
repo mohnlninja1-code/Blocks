@@ -23,6 +23,15 @@ var _menu_root: Control
 var _hud_root: Control
 var _pause_root: Control
 var _inventory_panel: PanelContainer
+var _inventory_slots_view: GridContainer
+var _creative_catalog_view: VBoxContainer
+var _inventory_tab_button: Button
+var _catalog_tab_button: Button
+var _creative_catalog_search: LineEdit
+var _creative_catalog_grid: GridContainer
+var _creative_catalog_status: Label
+var _creative_catalog_buttons: Array[Button] = []
+var _creative_catalog_max_visible := 72
 var _world_name_input: LineEdit
 var _seed_input: LineEdit
 var _mode_select: OptionButton
@@ -138,6 +147,7 @@ func _create_main_menu() -> void:
 	_mode_select = OptionButton.new()
 	_mode_select.add_item("Survival", 0)
 	_mode_select.add_item("Creative", 1)
+	_mode_select.select(1)
 	content.add_child(_mode_select)
 	var start_button := Button.new()
 	start_button.text = "Create New World"
@@ -337,41 +347,175 @@ func _create_inventory_panel() -> void:
 	_inventory_panel = PanelContainer.new()
 	_inventory_panel.name = "InventoryPanel"
 	_inventory_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_inventory_panel.offset_left = -340
-	_inventory_panel.offset_right = 340
-	_inventory_panel.offset_top = -240
-	_inventory_panel.offset_bottom = 240
+	_inventory_panel.offset_left = -490
+	_inventory_panel.offset_right = 490
+	_inventory_panel.offset_top = -315
+	_inventory_panel.offset_bottom = 315
 	_inventory_panel.visible = false
 	_inventory_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_panel(_inventory_panel)
 	_ui_root.add_child(_inventory_panel)
 	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
 	_inventory_panel.add_child(content)
-	var row := HBoxContainer.new()
-	content.add_child(row)
+
+	var title_row := HBoxContainer.new()
+	content.add_child(title_row)
 	var title := Label.new()
-	title.text = "INVENTORY"
+	title.text = "INVENTORY & CREATIVE CATALOG"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_size_override("font_size", 21)
-	row.add_child(title)
+	title_row.add_child(title)
 	var close := Button.new()
 	close.text = "Close"
 	_style_button(close, Vector2(75, 34))
 	close.pressed.connect(_toggle_inventory)
-	row.add_child(close)
-	var grid := GridContainer.new()
-	grid.columns = 9
-	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 4)
-	content.add_child(grid)
+	title_row.add_child(close)
+
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	content.add_child(tabs)
+	_inventory_tab_button = Button.new()
+	_inventory_tab_button.text = "Inventory Slots"
+	_style_button(_inventory_tab_button, Vector2(160, 36))
+	_inventory_tab_button.pressed.connect(_show_inventory_slots_tab)
+	tabs.add_child(_inventory_tab_button)
+	_catalog_tab_button = Button.new()
+	_catalog_tab_button.text = "Creative Catalog"
+	_style_button(_catalog_tab_button, Vector2(180, 36))
+	_catalog_tab_button.visible = false
+	_catalog_tab_button.pressed.connect(_show_creative_catalog_tab)
+	tabs.add_child(_catalog_tab_button)
+
+	_inventory_slots_view = GridContainer.new()
+	_inventory_slots_view.name = "InventorySlotsView"
+	_inventory_slots_view.columns = 9
+	_inventory_slots_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_inventory_slots_view.add_theme_constant_override("h_separation", 4)
+	_inventory_slots_view.add_theme_constant_override("v_separation", 4)
+	content.add_child(_inventory_slots_view)
 	for index in range(36):
 		var button := Button.new()
-		_style_button(button, Vector2(68, 42))
+		_style_button(button, Vector2(86, 52))
 		button.add_theme_font_size_override("font_size", 10)
 		button.pressed.connect(_select_inventory_slot.bind(index))
-		grid.add_child(button)
+		_inventory_slots_view.add_child(button)
 		_inventory_buttons.append(button)
+
+	_creative_catalog_view = VBoxContainer.new()
+	_creative_catalog_view.name = "CreativeCatalogView"
+	_creative_catalog_view.visible = false
+	_creative_catalog_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(_creative_catalog_view)
+	var search_row := HBoxContainer.new()
+	_creative_catalog_view.add_child(search_row)
+	_creative_catalog_search = LineEdit.new()
+	_creative_catalog_search.placeholder_text = "Search blocks and items from the supplied asset pack…"
+	_creative_catalog_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_creative_catalog_search.custom_minimum_size.y = 38
+	_creative_catalog_search.text_changed.connect(_filter_creative_catalog)
+	search_row.add_child(_creative_catalog_search)
+	var clear_search := Button.new()
+	clear_search.text = "Clear"
+	_style_button(clear_search, Vector2(75, 38))
+	clear_search.pressed.connect(func() -> void: _creative_catalog_search.clear())
+	search_row.add_child(clear_search)
+	_creative_catalog_status = Label.new()
+	_creative_catalog_status.add_theme_font_size_override("font_size", 12)
+	_creative_catalog_status.add_theme_color_override("font_color", Color(0.72, 0.78, 0.83))
+	_creative_catalog_view.add_child(_creative_catalog_status)
+	var catalog_scroll := ScrollContainer.new()
+	catalog_scroll.name = "CreativeCatalogScroll"
+	catalog_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	catalog_scroll.custom_minimum_size = Vector2(0, 350)
+	_creative_catalog_view.add_child(catalog_scroll)
+	_creative_catalog_grid = GridContainer.new()
+	_creative_catalog_grid.name = "CreativeCatalogGrid"
+	_creative_catalog_grid.columns = 8
+	_creative_catalog_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_creative_catalog_grid.add_theme_constant_override("h_separation", 4)
+	_creative_catalog_grid.add_theme_constant_override("v_separation", 4)
+	catalog_scroll.add_child(_creative_catalog_grid)
+
+func _show_inventory_slots_tab() -> void:
+	if _inventory_slots_view == null or _creative_catalog_view == null:
+		return
+	_inventory_slots_view.visible = true
+	_creative_catalog_view.visible = false
+	if _inventory_tab_button != null:
+		_inventory_tab_button.modulate = Color(1.0, 0.95, 0.72)
+	if _catalog_tab_button != null:
+		_catalog_tab_button.modulate = Color.WHITE
+
+func _show_creative_catalog_tab() -> void:
+	if _game_mode != "creative" or _inventory_slots_view == null or _creative_catalog_view == null:
+		return
+	_inventory_slots_view.visible = false
+	_creative_catalog_view.visible = true
+	if _inventory_tab_button != null:
+		_inventory_tab_button.modulate = Color.WHITE
+	if _catalog_tab_button != null:
+		_catalog_tab_button.modulate = Color(1.0, 0.95, 0.72)
+	_filter_creative_catalog(_creative_catalog_search.text if _creative_catalog_search != null else "")
+
+func _filter_creative_catalog(query: String) -> void:
+	if _creative_catalog_grid == null or _creative_catalog_status == null:
+		return
+	for child in _creative_catalog_grid.get_children():
+		_creative_catalog_grid.remove_child(child)
+		child.queue_free()
+	_creative_catalog_buttons.clear()
+	var normalized_query := query.strip_edges().to_lower()
+	var all_definitions: Array[Dictionary] = BlockRegistry.all_definitions()
+	var matches: Array[Dictionary] = []
+	for definition in all_definitions:
+		var item_id := int(definition.get("id", 0))
+		var item_name := String(definition.get("name", ""))
+		if item_id <= 0 or item_name in ["air", "cave_air", "void_air", "structure_void"]:
+			continue
+		var display_name := String(definition.get("display_name", item_name))
+		if not normalized_query.is_empty() and not (item_name.to_lower().contains(normalized_query) or display_name.to_lower().contains(normalized_query)):
+			continue
+		matches.append(definition)
+	var shown := mini(matches.size(), _creative_catalog_max_visible)
+	for index in range(shown):
+		var definition: Dictionary = matches[index]
+		var item_id := int(definition.get("id", 0))
+		var item_name := String(definition.get("display_name", definition.get("name", "Item")))
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(102, 70)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		button.text = item_name + "\n" + ("BLOCK" if String(definition.get("kind", "")) == "block" else "ITEM")
+		button.tooltip_text = "%s (ID %d)" % [item_name, item_id]
+		button.add_theme_font_size_override("font_size", 10)
+		button.focus_mode = Control.FOCUS_NONE
+		button.icon = ItemModelCatalog.texture_for_item_id(item_id)
+		button.icon_max_width = 28
+		button.expand_icon = true
+		button.pressed.connect(_choose_creative_catalog_item.bind(item_id))
+		_creative_catalog_grid.add_child(button)
+		_creative_catalog_buttons.append(button)
+	var source_root := "res://assets/minecraft"
+	var source_present := DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(source_root.path_join("blockstates")))
+	if matches.is_empty():
+		_creative_catalog_status.text = "No matches. Search by a block or item name."
+	elif not source_present:
+		_creative_catalog_status.text = "%d entries available; ZIP-derived asset folder is not extracted, so source icons/models are unavailable." % matches.size()
+	elif matches.size() > shown:
+		_creative_catalog_status.text = "Showing %d of %d results. Narrow the search to find more." % [shown, matches.size()]
+	else:
+		_creative_catalog_status.text = "%d blocks/items in this result. Icons use source-pack textures only." % matches.size()
+
+func _choose_creative_catalog_item(item_id: int) -> void:
+	if _game_mode != "creative" or inventory == null or item_id <= 0 or not is_instance_valid(player):
+		return
+	var selected_index := clampi(inventory.selected_hotbar_index, 0, mini(8, inventory.slot_count() - 1))
+	var stack_limit := maxi(1, int(BlockRegistry.stack_limit(item_id)))
+	inventory.slots[selected_index] = {"id": item_id, "count": stack_limit}
+	player.select_hotbar(selected_index)
+	_refresh_hud()
+	_set_status("Selected %s" % BlockRegistry.get_display_name(item_id))
+
 
 func _show_main_menu() -> void:
 	_is_menu_visible = true
@@ -478,6 +622,8 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	_hud_root.visible = true
 	_pause_root.visible = false
 	_inventory_panel.visible = false
+	_catalog_tab_button.visible = _game_mode == "creative"
+	_show_inventory_slots_tab()
 	player.set_physics_process(true)
 	_update_touch_visibility()
 	_refresh_hud()
@@ -524,6 +670,11 @@ func _toggle_inventory() -> void:
 	if _inventory_panel.visible:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		player.set_physics_process(false)
+		_catalog_tab_button.visible = _game_mode == "creative"
+		if _game_mode == "creative":
+			_show_creative_catalog_tab()
+		else:
+			_show_inventory_slots_tab()
 		_refresh_hud()
 	else:
 		player.set_physics_process(true)
