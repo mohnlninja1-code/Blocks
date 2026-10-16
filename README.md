@@ -1,39 +1,43 @@
 # Blocks: Voxel Frontier
 
-Godot 4.7.2-targeted landscape voxel sandbox. The current reference baseline is Minecraft Java Edition 1.18.2 because that is the version represented by the supplied resource/data ZIP.
+Godot 4.7.2-targeted landscape voxel sandbox with Minecraft Java Edition 1.18.2 as the only gameplay reference target.
 
 ## Current status
 
-This is an actively tested foundation, not a complete Java Edition recreation and not a delivered APK. The latest successful Godot workflow is:
-https://github.com/mohnlninja1-code/Blocks/actions/runs/38956921930
+The branch is an actively tested development foundation, not a complete Java Edition recreation and not a delivered APK. New worlds now default to **Survival + normal Overworld biome generation**. Creative mode and the valid Superflat world preset remain available; neither is the default. The older procedural-noise prototype remains in code only for compatibility with older saves.
 
-That run passed archive/fixture tests (7), foundational runtime tests (29), model resolver/renderer tests (29), source recipe/tag tests (16), Creative catalog UI tests (8), and the headless main-scene smoke launch.
+Latest successful Godot workflow: https://github.com/mohnlninja1-code/Blocks/actions/runs/38958535541
+
+It passed archive/fixture tests (7), foundational runtime tests (44), model resolver/renderer tests (29), source recipe/tag tests (16), Creative catalog UI/source-discovery tests (17), and the headless main-scene smoke launch.
 
 ## Implemented foundations
 
-- Main menu, landscape Android export preset, touch-action buttons, basic first-person movement, mining/placement, saves with backup recovery, inventory transactions and a chunked seeded world.
-- A source JSON model/blockstate resolver, including parent inheritance, texture aliases, variants, deterministic weighted selections and multipart selectors.
-- Basic block-element mesh generation from source model JSON and first-person/item-icon rendering from source models and textures. Generated-item side geometry is derived from opaque pixels in the supplied texture; no new texture art is synthesized.
+- Main menu, landscape Android export preset, touch-action buttons, basic first-person movement, block mining/placement, saves with backup recovery, inventory transactions and chunked world storage.
+- New-world options default to Survival and normal Overworld. Superflat remains an optional valid Java 1.18.2 preset.
+- An early seeded climate/biome terrain pipeline selects Java 1.18.2 biome identifiers over broad regions and includes different surface families, water level, caves, ores and biome-appropriate tree species. It is **not** yet vanilla's exact 1.18.2 noise-settings, surface-rule, cave, ore, tree/feature or structure generation.
+- A source JSON model/blockstate resolver with parent inheritance, texture aliases, variants, deterministic weighted selections and multipart selectors.
+- Basic block-element mesh generation from source model JSON and item/icon rendering from source models and supplied textures. Generated-item extrusion uses the alpha pixels of the source texture; no new texture art is synthesized.
 - Sound-event lookup against the pack's sounds.json and OGG paths.
 - Source recipe loading, nested item-tag lookup and Java-style cooker timing/result normalization, with focused fixture tests.
-- Searchable Creative Catalog UI that uses source-model textures when the resource ZIP has been extracted, allows selecting a result into the hotbar, and caps the visible list at 72 entries for mobile memory/performance.
-- Hash-checked local asset extraction and archive audit tools.
+- Searchable Creative Catalog UI that uses source-model textures when the ZIP is staged, allows selecting entries into the hotbar and caps visible results at 72 for mobile performance.
+- Hash-checked local asset extraction, archive inventory tooling and auditable coverage tests.
 
-These are partial integrations only. Passing fixture tests does not prove that every source resource or gameplay rule works.
+All above systems are partial. A passing fixture test does not prove a matching feature works across every resource or in a real mobile build.
 
 ## Source archive
 
-The supplied archive's SHA-256 is:
-bd6b2db35ab6e92de254a398b30ae56b0884e7f1a9c46490af1378ecc4d18f97
+Supplied archive SHA-256: `bd6b2db35ab6e92de254a398b30ae56b0884e7f1a9c46490af1378ecc4d18f97`.
 
-The verified inventory recorded 14,459 files, 8,311 valid JSON files, 1,235 item-model JSON files, 1,725 block-model JSON files, 900 blockstate JSON files and 1,058 recipe JSON files. The original ZIP has not been modified. Full third-party resources are intentionally excluded from the Git tree; extracted files are also excluded. Stage the original archive in the local project workspace using:
+Verified inventory: 14,459 files, 8,311 valid JSON files, 1,235 item-model JSONs, 1,725 block-model JSONs, 900 blockstate JSONs and 1,058 recipe JSONs. The untouched original ZIP is kept outside Git. Full third-party source resource files and extracted copies are excluded from the public tree. Stage them locally with:
 
+```sh
 python3 tools/prepare_assets.py /path/to/minecraft-assets-1.18.2.zip
+```
 
-The runtime catalog assigns temporary local IDs to discovered entries; it is not yet a complete, reference-ID-reconciled Java registry. Asset presence and catalogue name discovery are not evidence of correct block behavior.
+The runtime name-discovery catalog currently assigns temporary local IDs where starter definitions are absent. It is not a reference-ID-reconciled Java 1.18.2 registry.
 
-## Build and known gaps
+## Still missing / not delivered
 
-See docs/DELIVERY_STATUS.md, docs/PARITY_MATRIX.md, docs/KNOWN_ISSUES.md and docs/BUILD_ANDROID.md.
+Exact Java 1.18.2 world generation and structures; full registry/state behavior; complete model/render-layer/lighting parity; scheduled ticks, fluids, Redstone, block entities/automation, all crafting stations, all entities/combat/survival progression, Nether and End progression, broad visual regression tests and all associated bug fixing remain outstanding.
 
-No APK has been exported, installed or device-tested in this session. The authoring workspace has no Godot binary, matching Android export templates or Android SDK/adb; GitHub Actions currently validates the source project but does not export an APK. The current noisy terrain generator is not Java-compatible world generation; fluids, Redstone, block entities/automation, entities, structures, and Nether/End progression remain incomplete.
+No APK has been exported, installed or device-tested. The authoring environment has Java 21 but no Godot executable, matching Android export templates or Android SDK/adb. GitHub Actions currently validates the Godot source project but does not export an APK. The ZIP must be staged in the actual build workspace before any APK can claim to contain the supplied assets.
