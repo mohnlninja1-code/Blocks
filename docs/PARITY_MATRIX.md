@@ -4,38 +4,39 @@ This is an evidence ledger, not a feature promise. Resource discovery is separat
 
 | Area | Current implementation/evidence | Status | Acceptance test still required |
 |---|---|---|---|
-| Startup/menu | Main menu, world/mode selection and pause flow; Godot 4.7.2 smoke launch passed | IMPLEMENTED_UNVERIFIED | Device launch and gameplay screenshots; pause/resume on Android |
-| Creative catalog | Searchable list based on runtime registry, 72-result display cap, selects entries into the active hotbar, source model textures used as icons when assets are staged; 8 UI tests pass | IMPLEMENTED_UNVERIFIED | Run with the full ZIP staged; reconcile all entries and test every block/item select/place path on device |
-| Save store | Versioned JSON, temp writes, primary/backup rotation/recovery; corruption recovery test passed | IMPLEMENTED_UNVERIFIED | Crash/power-loss, app-kill/resume and Android storage tests |
-| Inventory core | Stack insertion/remainder, atomic costs, output-capacity rollback and serialization; 29 foundational tests pass | IMPLEMENTED_UNVERIFIED | Java stack rules, drag/drop, equipment, containers, recipe remainders and cancellation |
-| Recipes and tags | Source recipe traversal, shaped/shapeless matching, nested item-tag references, cooking-result normalization and timing; 16 fixture tests pass | IN_PROGRESS | Run against every supplied recipe/tag file; implement replacement semantics, all condition/remainder/unlock behavior, recipe books and station rules |
-| Chunk/world storage | Chunk storage, seeded noise terrain, Y −64…319, streaming region, visible-face meshes and collision | IMPLEMENTED_UNVERIFIED | Java worldgen comparison, seams, large worlds, lighting and measured mobile performance |
-| Block edits/states | Place/remove deltas and state property save/load APIs exist | IMPLEMENTED_UNVERIFIED | Every legal state, support/neighbour rules, collision/selection shape, drops, tools, ticks and state persistence |
-| Block model resolver | Source model parent inheritance, aliases, blockstate variants, weighted selections and multipart selectors; regression tests pass | IN_PROGRESS | Coverage of the full pack, special built-in parents, UV-lock, rotations, tint, render layers and reference screenshots |
-| Block model mesher | Builds faces from source model element JSON and referenced source textures; fixture integration tests pass | IN_PROGRESS | Full resource-staged render test, face culling, AO/light, transparency, render layers, non-cube shapes and visual comparisons |
-| Item model renderer | Item texture icons, first-person selected-item node, inherited element meshes and generated-item extrusion from source texture alpha; fixture tests pass | IN_PROGRESS | All predicates/overrides, GUI/ground/fixed/head/left-hand contexts, animations, glint, third person and reference screenshots |
-| Sound events | Parses source sounds.json and selects referenced OGG samples by event | IN_PROGRESS | Stage every OGG, verify path coverage, spatial/world audio, entity/UI events and volume settings |
-| Source archive | SHA/integrity and JSON counts verified; extraction pipeline uses staging, hash checks, conflict backup and manifest | VERIFIED for audit process only | Extract into the runtime build workspace and verify all resolved paths from the game |
-| Fluids | No authoritative fluid simulation | NOT_STARTED | Flow/source rules, ticks, buckets, contacts, waterlogging and render/collision behavior |
-| Redstone | No signal simulation | NOT_STARTED | Components, update order and tick-accurate circuit assertions |
-| Block entities/automation | No authoritative complete runtime | NOT_STARTED | Containers, signs, furnaces, hoppers, dispensers and reload/update tests |
-| Entities/combat | No complete mob runtime | NOT_STARTED | Correct roster, AI/pathfinding, attacks, effects, drops and persistence |
-| Overworld biomes/structures | Simple noise surface/cave/ore foundation only | NOT_STARTED for Java parity | Version-matched seed tests, biomes, caves, ores, structure placement and loot |
-| Nether/End | No authoritative dimension/progression loop | NOT_STARTED | Dimension terrain, portals, structures, boss encounter, rewards and travel |
-| Android packaging/device | Landscape Android export preset exists; no APK artifact or device evidence | NOT RUN | Templates/JDK/SDK, export and checksum, install/launch, touch/save/reload/performance |
-| 332 mechanics gap target | Count reported by handoff; no complete named target list was recovered | BLOCKED pending reconciliation | Reconcile each item against a Java 1.18.2 reference catalogue |
-| 791 item-model gap target | Archive inventory has 1,235 item model JSONs; no authoritative 791-ID list was recovered | BLOCKED pending reconciliation | Trace each target ID to model, texture, runtime consumer and visual test |
+| Startup/menu | Main menu, world/mode selection and pause flow; headless smoke passed | IMPLEMENTED_UNVERIFIED | Landscape device launch, visual capture, pause/resume and touch |
+| New-world defaults | Survival + normal Overworld selected by default; Creative and Superflat remain available | IMPLEMENTED_UNVERIFIED | End-to-end creation/save/reload on Android |
+| Survival spawn | Searches near origin for land, avoids identified ocean/river biomes, positions above sea level; regression passed | IN_PROGRESS | Verify in real rendered world across many seeds and verify spawn collision/biome |
+| Biome terrain prototype | Seeded continentalness, erosion/ridge, temperature/humidity and river fields; multiple valid Java 1.18.2 biome IDs; biome-dependent surface blocks, water level, cave carving, ore placements and trees | IN_PROGRESS | Implement exact Java 1.18.2 climate/noise settings, surface rules, 3D carvers, ore/feature distributions, biome edges and reference seed comparison |
+| Superflat | Optional four-layer Classic Flat preset (bedrock Y=0, dirt Y=1–2, grass Y=3); layer/mode save tests pass | IMPLEMENTED_UNVERIFIED | Verify full Superflat preset and exact layer semantics against Java 1.18.2 |
+| Save store | Versioned JSON, temp writes, primary/backup rotation/recovery; tests pass | IMPLEMENTED_UNVERIFIED | Crash/power-loss, app-kill/resume and Android storage tests |
+| Inventory core | Stack insert/remainder, atomic costs, output-capacity rollback and serialization | IMPLEMENTED_UNVERIFIED | Java stack/equipment/container transfer behavior and all cancel/failure paths |
+| Recipes and tags | Source recipe traversal, shaped/shapeless matching, nested item tags and cooking-result/timing conversion; 16 fixture tests pass | IN_PROGRESS | Run over every archive recipe/tag and finish replacement/order, conditions, remainders, unlocks, recipe books and stations |
+| Block model resolver | Parent inheritance, texture aliases, variants, weighted models and multipart selectors; tests pass | IN_PROGRESS | Full asset-pack coverage, built-in parent behavior, UV-lock, culling and rotations |
+| Block model mesher | Builds faces from model elements and source textures; fixture integration passes | IN_PROGRESS | All variant shapes, light/AO/tint/render layers, correct transparency, boundary culling and screenshot comparisons |
+| Item model renderer | Source texture icons, first-person selected-item node, inherited element meshes and generated-item extrusion from source alpha; fixture tests pass | IN_PROGRESS | Full predicate/override and GUI/ground/fixed/head/third-person contexts, animations, glint and screenshots |
+| Sound events | Looks up source `sounds.json` events and referenced OGG paths | IN_PROGRESS | Stage all OGG files and verify live world/entity/UI playback, spatial audio and volume |
+| Source archive | SHA/integrity and JSON counts verified; extraction has staging, hash checks, conflict backup and manifest | VERIFIED for the archive-audit process only | Stage archive in the actual build workspace and verify every used resource path |
+| Fluids | No authoritative fluid simulation | NOT_STARTED | Java source/flow rules, update ticks, buckets, contact effects and waterlogged states |
+| Redstone | No signal simulation | NOT_STARTED | Signal strengths/directionality/update order and exact circuit tick assertions |
+| Block entities/automation | No complete runtime | NOT_STARTED | Containers, furnaces, hoppers, dispensers, signs, persistence and automation |
+| Entities/combat | No complete mob runtime | NOT_STARTED | All Java 1.18.2 entities, AI goals, pathfinding, combat, drops and save state |
+| Overworld structures | No accurate structure generator | NOT_STARTED | All applicable structures, placement, layout, encounters, loot and reference-seed tests |
+| Nether/End | No authoritative dimension/progression loop | NOT_STARTED | Dimensions, portals, structures, boss, rewards and travel |
+| Android packaging/device | Landscape preset exists; no APK artifact or device evidence | NOT RUN | Templates/JDK/SDK, APK export/checksum, install/launch, touch/save/reload/screenshots/perf |
+| 332 mechanics target | Reported by handoff; no authoritative named list recovered | BLOCKED pending reconciliation | Reconcile every row against a Java 1.18.2 reference catalog |
+| 791 item-model target | Archive contains 1,235 item-model JSONs; no authoritative 791-ID target list recovered | BLOCKED pending reconciliation | Link each target item to exact model, texture, consumer and visual test |
 
 ## Latest successful CI
 
-https://github.com/mohnlninja1-code/Blocks/actions/runs/38956921930
+https://github.com/mohnlninja1-code/Blocks/actions/runs/38958535541
 
-Godot 4.7.2 results: 7 archive/fixture tests, 29 foundational tests, 29 model tests, 16 recipe/tag tests and 8 Creative catalog UI tests passed; main-scene headless smoke launch passed. This is not proof of full source-resource coverage or visual/gameplay parity.
+Godot 4.7.2 results: 7 archive/extraction fixtures, 44 foundation tests, 29 model resolver/renderer tests, 16 recipe/tag tests, and 17 Creative catalog tests passed; headless main-scene smoke passed. The biome checks prove only that the prototype selects diverse valid biome names and finds a dry spawn. They do not prove Java 1.18.2 world-generation parity.
 
 ## Status semantics
 
 - NOT_STARTED: implementation does not exist.
-- IN_PROGRESS: traceable code exists but remains incomplete.
-- IMPLEMENTED_UNVERIFIED: code exists but reference/device/visual acceptance evidence is absent.
+- IN_PROGRESS: code exists, behavior incomplete or acceptance evidence missing.
+- IMPLEMENTED_UNVERIFIED: code exists but full reference/device/visual acceptance is absent.
 - VERIFIED: only the exact named acceptance check passed.
-- BLOCKED: required reference list, asset staging, toolchain or other prerequisite is unavailable.
+- BLOCKED: an authoritative reference list, staged assets, toolchain or required evidence is unavailable.
