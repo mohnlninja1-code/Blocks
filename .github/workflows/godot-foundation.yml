@@ -9,6 +9,7 @@ on:
       - "data/**"
       - "tests/**"
       - "tools/validate_project.py"
+      - "tools/prepare_assets.py"
       - ".github/workflows/godot-foundation.yml"
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - "data/**"
       - "tests/**"
       - "tools/validate_project.py"
+      - "tools/prepare_assets.py"
       - ".github/workflows/godot-foundation.yml"
   workflow_dispatch:
 
@@ -35,6 +37,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Run offline audit and extraction fixtures
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Run static project validation
+        run: python3 tools/validate_project.py
       - name: Set up Godot 4.7.2 stable
         uses: chickensoft-games/setup-godot@v2
         with:
@@ -43,8 +49,6 @@ jobs:
           include-templates: false
       - name: Record engine version
         run: godot --version
-      - name: Run static project validation
-        run: python3 tools/validate_project.py
       - name: Import project and parse resources
         run: godot --headless --editor --path . --import --quit
       - name: Run foundational engine tests
