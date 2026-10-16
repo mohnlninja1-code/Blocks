@@ -271,11 +271,7 @@ func _ingredient_matches(stack: Dictionary, ingredient: Variant) -> bool:
 					return true
 		return false
 	if definition.has("tag"):
-		var key := "tag:" + String(definition["tag"])
-		if not _warned_once.has(key):
-			push_warning("Recipe ingredient tag requires the not-yet-integrated 1.18.2 tag registry: %s" % definition["tag"])
-			_warned_once[key] = true
-		return false
+		return _tag_contains_item(String(definition["tag"]), stack_id)
 	return false
 
 func _available_count(grid: Array, item_id: int) -> int:
@@ -399,6 +395,48 @@ func _station_matches(recipe: Dictionary, station: String) -> bool:
 		return true
 	return required == station
 
+func _grid_costs(grid: Array) -> Array:
+	var costs: Dictionary = {}
+	for value in grid:
+		if not value is Dictionary:
+			continue
+		var stack: Dictionary = value
+		var item_id := int(stack.get("id", 0))
+		if item_id > 0 and int(stack.get("count", 0)) > 0:
+			costs[item_id] = int(costs.get(item_id, 0)) + 1
+	var result: Array = []
+	for item_id in costs:
+		result.append({"id": int(item_id), "count": int(costs[item_id])})
+	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["id"]) < int(b["id"]))
+	return result
+
+func _normalize_matched_recipe(recipe: Dictionary, grid: Array) -> Dictionary:
+	var result := recipe.duplicate(true)
+	if result.has("output") and result.get("output") is Dictionary:
+		return result
+	var source_result: Variant = result.get("result", {})
+	var result_name := ""
+	var result_count := 1
+	if source_result is Dictionary:
+		result_name = String(source_result.get("item", ""))
+		result_count = maxi(1, int(source_result.get("count", 1)))
+	elif source_result is String:
+		result_name = String(source_result)
+	if result_name.is_empty():
+		return {}
+	var result_id := _resolve_item_name(result_name)
+	if result_id <= 0:
+		if not _warned_once.has("missing-output:" + result_name):
+			push_warning("Source recipe output is not in the current runtime catalog: %s" % result_name)
+			_warned_once["missing-output:" + result_name] = true
+		return {}
+	result["source_result"] = source_result.duplicate(true) if source_result is Dictionary or source_result is Array else source_result
+	result["output"] = {"id": result_id, "count": result_count}
+	result["inputs"] = _grid_costs(grid)
+	result["source_recipe"] = true
+	result["runtime_output_item_id"] = result_id
+	return result
+
 func find_matching_recipe(grid: Array, grid_width: int = 2, station: String = "") -> Dictionary:
 	if grid.is_empty():
 		return {}
@@ -416,26 +454,68 @@ func find_matching_recipe(grid: Array, grid_width: int = 2, station: String = ""
 		elif String(recipe.get("type", "")).ends_with("_crafting_shapeless") or recipe.has("ingredients"):
 			matches = _matches_shapeless(recipe, grid)
 		if matches:
-			return recipe.duplicate(true)
+			return _normalize_matched_recipe(recipe, grid)
 	return {}
+
+func _station_for_cooking_type(recipe_type: String) -> String:
+	match recipe_type:
+		"minecraft:smelting", "smelting": return "furnace"
+		"minecraft:blasting", "blasting": return "blast_furnace"
+		"minecraft:smoking", "smoking": return "smoker"
+		"minecraft:campfire_cooking", "campfire_cooking": return "campfire"
+		_: return ""
 
 func smelting_result(item_id: int, station: String = "furnace") -> Dictionary:
 	for value in smelting_recipes:
 		if not value is Dictionary:
 			continue
 		var recipe: Dictionary = value
-		var required_station := String(recipe.get("station", recipe.get("type", "furnace")))
-		if required_station.begins_with("minecraft:"):
-			required_station = required_station.get_slice(":", 1)
-		if required_station != station and not (station == "furnace" and required_station in ["smelting", "furnace"]):
+		var recipe_type := String(recipe.get("type", ""))
+		var required_station := String(recipe.get("station", ""))
+		if required_station.is_empty():
+			required_station = _station_for_cooking_type(recipe_type)
+		elif required_station.begins_with("minecraft:"):
+			required_station = _station_for_cooking_type(required_station)
+			if required_station.is_empty():
+				required_station = String(recipe["station"]).get_slice(":", 1)
+		if not required_station.is_empty() and required_station != station:
 			continue
-		var input_id := int(recipe.get("input", recipe.get("ingredient", 0)))
-		if input_id == item_id:
-			var output_id := int(recipe.get("output", 0))
-			var output_count := int(recipe.get("count", 1))
-			if recipe.get("result", {}) is Dictionary:
-				var output: Dictionary = recipe["result"]
-				output_id = int(output.get("id", output_id))
-				output_count = int(output.get("count", output_count))
-			return {"id": output_id, "count": output_count}
+		var input_id := int(recipe.get("input", 0))
+		var ingredient: Variant = recipe.get("ingredient", null)
+		if recipe.has("input"):
+			if input_id != item_id:
+				continue
+		elif ingredient != null:
+			if not _ingredient_matches({"id": item_id, "count": 1}, ingredient):
+				continue
+		else:
+			continue
+
+		var output_id := int(recipe.get("output", 0))
+		var output_count := int(recipe.get("count", 1))
+		var result_value: Variant = recipe.get("result", null)
+		if result_value is Dictionary:
+			var output_definition: Dictionary = result_value
+			if output_definition.has("item"):
+				output_id = _resolve_item_name(String(output_definition["item"]))
+				output_count = maxi(1, int(output_definition.get("count", output_count)))
+			elif output_definition.has("id"):
+				output_id = int(output_definition.get("id", output_id))
+				output_count = maxi(1, int(output_definition.get("count", output_count)))
+		elif result_value is String:
+			output_id = _resolve_item_name(String(result_value))
+		if output_id <= 0:
+			continue
+		var cooking_seconds := float(recipe.get("seconds", 5.0))
+		if recipe.has("cookingtime"):
+			cooking_seconds = maxf(0.05, float(recipe["cookingtime"]) / 20.0)
+		return {
+			"id": output_id,
+			"count": output_count,
+			"seconds": cooking_seconds,
+			"experience": float(recipe.get("experience", 0.0)),
+			"recipe_id": String(recipe.get("id", "")),
+			"source_recipe": bool(recipe.get("source_pack_recipe", false)),
+			"station": required_station if not required_station.is_empty() else station
+		}
 	return {}
