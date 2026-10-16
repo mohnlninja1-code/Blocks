@@ -1,14 +1,20 @@
 # Known issues / release blockers
 
-This is a development milestone, not the final 1.18.2-style game.
+**Release status: BLOCKED. This branch is not a complete or playable Java 1.18.2-parity game.**
 
-1. Godot 4.7.2 script import, tests and APK export have not yet run in the authoring environment. The hosted CI workflow must pass and any issues it finds must be fixed.
-2. No real render output or screenshot has been captured or inspected. The GL Compatibility Android path remains visually unverified; no absence-of-artifacts claim is made.
-3. Scope is materially incomplete: fluid simulation, Redstone, advanced states/shapes, most block/item/recipe families, most mobs, ranged projectiles, advanced combat, weather, structures, Nether/End, progression/enchanting/brewing are missing.
-4. Only 75 of the 14,459 source pack files are presently integrated to runtime callsites. The remaining 14,384 entries have per-file audit statuses; applicable art/audio must be integrated as associated features are actually implemented.
-5. No Android device install/launch, touch matrix, suspend/resume, long-save test, performance profile or visual review has run.
-6. Save integrity, fast chunk boundary updates, furnace edge cases and zombie movement need engine/runtime tests.
+1. `scenes/main.tscn` references missing `scripts/main.gd`.
+2. `project.godot` declares missing autoload scripts `scripts/save_store.gd`, `scripts/sound_bank.gd`, and `scripts/recipe_registry.gd`.
+3. `scripts/block_registry.gd` reads missing `data/expanded_blocks.json`.
+4. The starter registry is only 19 blocks, 8 items, 6 crafting recipes and 2 smelting recipes.
+5. Runtime source for chunks/world generation, player controls, inventory, entity AI/combat, block entities, fluids, redstone, model rendering, dimension travel and the game UI is absent from the inspected tree.
+6. The original ZIP is not staged into `assets/minecraft/`; archive assets are not proven to have runtime consumers.
+7. Audit found 1,235 item model JSONs, 900 blockstate JSONs and 1,058 recipe JSONs in the source archive; all rows require implementation and tests. The reported 791 missing item models and 332 mechanics are not backed by named target lists yet.
+8. A Godot parser/test workflow and Android CI workflow are absent. Local Godot and adb are unavailable; JDK 17 was not found.
+9. No Android APK, checksum, install/launch log, renderer screenshots, touch/input evidence, save/reload evidence, or performance profile exists in this session.
+10. The local metadata audit bundle passed six inventory consistency tests; these are audit-ledger tests only and do not exercise the game engine.
 
 ## Visual defect policy
 
-A changed source line does not close a rendering defect. Reproduce, diagnose, fix, rerun the affected test, and inspect the resulting image in the renderer/export where it occurred. Chunk seams, missing faces, inverted normals, texture bleed, transparency/depth issues, flicker, black/magenta resources, clipped UI or collision/geometry mismatch are release blockers until retested and closed with evidence.
+After runtime and renderer paths exist, a source change alone does not close a rendering defect. Reproduce, fix, rerun the affected test, and inspect exported-renderer screenshots for seams, holes, UV/rotation errors, transparency/z-fighting, missing or magenta textures, light discontinuities, clipped UI and collision/geometry mismatch.
+
+Do not label any item or mechanic complete until the implementation and its applicable reference/regression tests pass.
