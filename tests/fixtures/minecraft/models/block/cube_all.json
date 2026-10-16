@@ -1,0 +1,5 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {"all": "minecraft:block/parent_texture"},
+  "ambientocclusion": true
+}
