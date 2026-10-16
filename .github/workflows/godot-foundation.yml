@@ -57,7 +57,7 @@ jobs:
       - name: Record engine version
         run: godot --version
       - name: Import project and parse resources
-        run: godot --headless --editor --path . --import --quit
+        run: timeout 60s godot --verbose --headless --editor --path . --import --quit
       - name: Run foundational engine tests
         run: timeout 90s godot --headless --path . --script res://tests/run_tests.gd
       - name: Run isolated model resolver tests
