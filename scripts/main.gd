@@ -35,6 +35,7 @@ var _creative_catalog_max_visible := 72
 var _world_name_input: LineEdit
 var _seed_input: LineEdit
 var _mode_select: OptionButton
+var _world_type_select: OptionButton
 var _save_list: VBoxContainer
 var _hotbar_buttons: Array[Button] = []
 var _inventory_buttons: Array[Button] = []
@@ -112,7 +113,7 @@ func _create_main_menu() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_menu_root.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(440, 440)
+	panel.custom_minimum_size = Vector2(460, 500)
 	_style_panel(panel)
 	center.add_child(panel)
 	var content := VBoxContainer.new()
@@ -126,7 +127,7 @@ func _create_main_menu() -> void:
 	title.add_theme_color_override("font_color", Color(0.81, 0.88, 0.72))
 	content.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "Seeded voxel survival • Java 1.18.2 parity work in progress"
+	subtitle.text = "Creative Superflat default • Java 1.18.2 parity work in progress"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 12)
 	subtitle.add_theme_color_override("font_color", Color(0.72, 0.76, 0.81))
@@ -144,6 +145,12 @@ func _create_main_menu() -> void:
 	_seed_input.placeholder_text = "Enter an integer seed"
 	_seed_input.custom_minimum_size.y = 38
 	content.add_child(_seed_input)
+	content.add_child(_field_label("World type"))
+	_world_type_select = OptionButton.new()
+	_world_type_select.add_item("Superflat (default)", 0)
+	_world_type_select.add_item("Noise terrain (experimental)", 1)
+	_world_type_select.select(0)
+	content.add_child(_world_type_select)
 	_mode_select = OptionButton.new()
 	_mode_select.add_item("Survival", 0)
 	_mode_select.add_item("Creative", 1)
@@ -584,8 +591,16 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	_active_slot = _safe_slot(name)
 	_game_mode = mode
 	_world_clock = float(saved.get("world_clock", 0.25))
+	var selected_terrain_mode := "superflat"
+	if _world_type_select != null and _world_type_select.selected == 1:
+		selected_terrain_mode = "noise"
+	if saved.has("terrain_mode"):
+		selected_terrain_mode = String(saved.get("terrain_mode", "superflat"))
+	elif saved.has("world_state"):
+		selected_terrain_mode = "noise" # Legacy saves were created with the earlier noise terrain.
 	world = WORLD_SCRIPT.new()
 	world.name = "VoxelWorld"
+	world.set_terrain_mode(selected_terrain_mode)
 	add_child(world)
 	if saved.has("world_state") and saved["world_state"] is Dictionary:
 		world.load_state(saved["world_state"], 1)
@@ -713,6 +728,7 @@ func _save_world() -> void:
 		"world_name": _world_name,
 		"seed": int(world.world_seed),
 		"game_mode": _game_mode,
+		"terrain_mode": String(world.terrain_mode),
 		"world_state": world.save_state(),
 		"player_state": player.serialize(),
 		"inventory": inventory.serialize(),
