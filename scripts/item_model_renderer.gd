@@ -185,13 +185,17 @@ func _append_element(surfaces: Dictionary, element: Dictionary, model: Dictionar
 		var normals: Array = surface["normals"]
 		var vertices: Array = surface["vertices"]
 		var uvs: Array = surface["uvs"]
+		var face_normal := _normal_for_face(face)
+		if bool(rotation.get("enabled", false)):
+			face_normal = (rotation["basis"] as Basis) * face_normal
+			face_normal = face_normal.normalized()
 		for vertex_index in TRIANGLES:
 			var corner: Vector3 = corners[vertex_index]
 			if bool(rotation.get("enabled", false)):
 				var origin: Vector3 = rotation["origin"]
 				corner = origin + (rotation["basis"] as Basis) * (corner + Vector3.ONE * 0.5 - origin) - Vector3.ONE * 0.5
 			vertices.append(corner)
-			normals.append(_normal_for_face(face))
+			normals.append(face_normal)
 			uvs.append(uv_points[vertex_index])
 		surface["vertices"] = vertices
 		surface["normals"] = normals
