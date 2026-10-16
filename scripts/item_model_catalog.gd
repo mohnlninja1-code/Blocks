@@ -58,7 +58,7 @@ func resolve_item_model(item_id: int, predicate_values: Dictionary = {}) -> Dict
 	var cache_key := "%d|%s" % [item_id, JSON.stringify(predicate_values)]
 	if _resolved_cache.has(cache_key):
 		return (_resolved_cache[cache_key] as Dictionary).duplicate(true)
-	var model := model_loader.resolve_model(base_id)
+	var model: Dictionary = model_loader.resolve_model(base_id)
 	if model.is_empty():
 		# Some block-backed items use the block model directly when the item model file is absent.
 		var block_fallback := "minecraft:block/" + String(_definition_for_id(item_id).get("name", ""))
@@ -77,7 +77,7 @@ func resolve_item_model(item_id: int, predicate_values: Dictionary = {}) -> Dict
 			var override_id := String(override_definition.get("model", ""))
 			if override_id.is_empty():
 				continue
-			var overridden := model_loader.resolve_model(override_id)
+			var overridden: Dictionary = model_loader.resolve_model(override_id)
 			if not overridden.is_empty():
 				model = overridden
 	model["requested_item_id"] = item_id
