@@ -597,12 +597,22 @@ func _refresh_hud() -> void:
 		if item_id > 0:
 			name = String(BlockRegistry.get_display_name(item_id)).replace(" Block", "")
 		_hotbar_buttons[index].text = "%d  %s\n%d" % [index + 1, name, count]
+		_hotbar_buttons[index].tooltip_text = "Slot %d — %s ×%d" % [index + 1, BlockRegistry.get_display_name(item_id) if item_id > 0 else "Empty", count]
+		var icon_texture: Texture2D = ItemModelCatalog.texture_for_item_id(item_id) if item_id > 0 else null
+		_hotbar_buttons[index].icon = icon_texture
+		_hotbar_buttons[index].icon_max_width = 22
+		_hotbar_buttons[index].expand_icon = true
 		_hotbar_buttons[index].modulate = Color(1.0, 0.95, 0.72) if index == inventory.selected_hotbar_index else Color.WHITE
 	for index in range(mini(_inventory_buttons.size(), inventory.slot_count())):
 		var stack: Dictionary = inventory.get_slot(index)
 		var item_id := int(stack.get("id", 0))
 		var name := "Empty" if item_id == 0 else BlockRegistry.get_display_name(item_id)
-		_inventory_buttons[index].text = "%s\n×%d" % [name, int(stack.get("count", 0))]
+		var stack_count := int(stack.get("count", 0))
+		_inventory_buttons[index].text = "%s\n×%d" % [name, stack_count]
+		_inventory_buttons[index].tooltip_text = "%s ×%d" % [name, stack_count]
+		_inventory_buttons[index].icon = ItemModelCatalog.texture_for_item_id(item_id) if item_id > 0 else null
+		_inventory_buttons[index].icon_max_width = 22
+		_inventory_buttons[index].expand_icon = true
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(player) or not is_instance_valid(world) or _is_menu_visible:
