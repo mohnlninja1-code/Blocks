@@ -1,0 +1,21 @@
+{
+  "0": {"name":"air", "display_name":"Air", "solid":false, "opaque":false, "hardness":0.0, "drop":0, "stack_size":64, "textures":{}},
+  "1": {"name":"grass_block", "display_name":"Grass Block", "solid":true, "opaque":true, "hardness":0.6, "drop":2, "stack_size":64, "textures":{"top":"grass_block_top", "bottom":"dirt", "side":"grass_block_side"}},
+  "2": {"name":"dirt", "display_name":"Dirt", "solid":true, "opaque":true, "hardness":0.5, "drop":2, "stack_size":64, "textures":{"top":"dirt", "bottom":"dirt", "side":"dirt"}},
+  "3": {"name":"stone", "display_name":"Stone", "solid":true, "opaque":true, "hardness":1.5, "drop":4, "stack_size":64, "textures":{"top":"stone", "bottom":"stone", "side":"stone"}},
+  "4": {"name":"cobblestone", "display_name":"Cobblestone", "solid":true, "opaque":true, "hardness":2.0, "drop":4, "stack_size":64, "textures":{"top":"cobblestone", "bottom":"cobblestone", "side":"cobblestone"}},
+  "5": {"name":"bedrock", "display_name":"Bedrock", "solid":true, "opaque":true, "hardness":-1.0, "drop":0, "stack_size":64, "textures":{"top":"bedrock", "bottom":"bedrock", "side":"bedrock"}},
+  "6": {"name":"sand", "display_name":"Sand", "solid":true, "opaque":true, "hardness":0.5, "drop":6, "stack_size":64, "textures":{"top":"sand", "bottom":"sand", "side":"sand"}},
+  "7": {"name":"gravel", "display_name":"Gravel", "solid":true, "opaque":true, "hardness":0.6, "drop":7, "stack_size":64, "textures":{"top":"gravel", "bottom":"gravel", "side":"gravel"}},
+  "8": {"name":"oak_log", "display_name":"Oak Log", "solid":true, "opaque":true, "hardness":2.0, "drop":8, "stack_size":64, "textures":{"top":"oak_log_top", "bottom":"oak_log_top", "side":"oak_log"}},
+  "9": {"name":"oak_planks", "display_name":"Oak Planks", "solid":true, "opaque":true, "hardness":2.0, "drop":9, "stack_size":64, "textures":{"top":"oak_planks", "bottom":"oak_planks", "side":"oak_planks"}},
+  "10": {"name":"oak_leaves", "display_name":"Oak Leaves", "solid":true, "opaque":true, "hardness":0.2, "drop":10, "stack_size":64, "textures":{"top":"oak_leaves", "bottom":"oak_leaves", "side":"oak_leaves"}, "alpha_scissor":true},
+  "11": {"name":"coal_ore", "display_name":"Coal Ore", "solid":true, "opaque":true, "hardness":3.0, "drop":1004, "stack_size":64, "textures":{"top":"coal_ore", "bottom":"coal_ore", "side":"coal_ore"}},
+  "12": {"name":"iron_ore", "display_name":"Iron Ore", "solid":true, "opaque":true, "hardness":3.0, "drop":12, "stack_size":64, "textures":{"top":"iron_ore", "bottom":"iron_ore", "side":"iron_ore"}},
+  "13": {"name":"gold_ore", "display_name":"Gold Ore", "solid":true, "opaque":true, "hardness":3.0, "drop":13, "stack_size":64, "textures":{"top":"gold_ore", "bottom":"gold_ore", "side":"gold_ore"}},
+  "14": {"name":"diamond_ore", "display_name":"Diamond Ore", "solid":true, "opaque":true, "hardness":3.0, "drop":1005, "stack_size":64, "textures":{"top":"diamond_ore", "bottom":"diamond_ore", "side":"diamond_ore"}},
+  "15": {"name":"crafting_table", "display_name":"Crafting Table", "solid":true, "opaque":true, "hardness":2.5, "drop":15, "stack_size":64, "textures":{"top":"crafting_table_top", "bottom":"oak_planks", "side":"crafting_table_side", "front":"crafting_table_front"}},
+  "16": {"name":"furnace", "display_name":"Furnace", "solid":true, "opaque":true, "hardness":3.5, "drop":16, "stack_size":64, "textures":{"top":"furnace_top", "bottom":"furnace_top", "side":"furnace_side", "front":"furnace_front"}},
+  "17": {"name":"sandstone", "display_name":"Sandstone", "solid":true, "opaque":true, "hardness":0.8, "drop":17, "stack_size":64, "textures":{"top":"sandstone", "bottom":"sandstone", "side":"sandstone"}},
+  "18": {"name":"clay", "display_name":"Clay", "solid":true, "opaque":true, "hardness":0.6, "drop":18, "stack_size":64, "textures":{"top":"clay", "bottom":"clay", "side":"clay"}}
+}
