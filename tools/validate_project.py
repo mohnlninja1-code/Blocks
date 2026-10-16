@@ -36,7 +36,7 @@ def main() -> int:
         "scripts/inventory_model.gd", "scripts/voxel_world.gd", "scripts/voxel_player.gd",
         "data/blocks.json", "data/items.json", "data/expanded_blocks.json",
         "data/recipes.json", "data/smelting_recipes.json", "export_presets.cfg",
-        "tests/run_tests.gd", "tests/model_loader_tests.gd", "tests/recipe_registry_tests.gd",
+        "tests/run_tests.gd", "tests/model_loader_tests.gd", "tests/recipe_registry_tests.gd", "tests/creative_catalog_tests.gd",
     ]:
         check((ROOT / relative).is_file(), f"required project file exists: {relative}")
 
