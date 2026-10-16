@@ -198,6 +198,8 @@ func _finish_mining(target: Dictionary) -> void:
 	if not world.set_block_at(position, 0):
 		_mining_progress = 0.0
 		return
+	if has_node("/root/SoundBank"):
+		SoundBank.play_block(String(definition.get("name", "stone")), "break")
 	if game_mode != "creative" and inventory != null and drop_id > 0:
 		inventory.add_item(drop_id, 1)
 	_mining_progress = 0.0
@@ -232,6 +234,9 @@ func place_target_block() -> bool:
 		if not inventory.remove_item(item_id, 1):
 			world.set_block_at(place_position, 0)
 			return false
+	if has_node("/root/SoundBank"):
+		var placed_definition: Dictionary = BlockRegistry.get_definition(place_id)
+		SoundBank.play_block(String(placed_definition.get("name", "stone")), "place")
 	return true
 
 func _overlaps_player(point: Vector3i) -> bool:
