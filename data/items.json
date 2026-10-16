@@ -1,10 +1,72 @@
 {
-  "1001": {"name":"stick", "display_name":"Stick", "stack_size":64, "category":"material", "icon":"res://assets/minecraft/textures/item/stick.png", "mining_speed":1.0},
-  "1002": {"name":"wooden_pickaxe", "display_name":"Wooden Pickaxe", "stack_size":1, "category":"tool", "icon":"res://assets/minecraft/textures/item/wooden_pickaxe.png", "mining_speed":2.5, "tool_tag":"pickaxe", "durability":59},
-  "1003": {"name":"apple", "display_name":"Apple", "stack_size":64, "category":"food", "icon":"res://assets/minecraft/textures/item/apple.png", "food":4, "healing":4},
-  "1004": {"name":"coal", "display_name":"Coal", "stack_size":64, "category":"material", "icon":"res://assets/minecraft/textures/item/coal.png", "mining_speed":1.0},
-  "1005": {"name":"diamond", "display_name":"Diamond", "stack_size":64, "category":"material", "icon":"res://assets/minecraft/textures/item/diamond.png", "mining_speed":1.0},
-  "1006": {"name":"iron_ingot", "display_name":"Iron Ingot", "stack_size":64, "category":"material", "icon":"res://assets/minecraft/textures/item/iron_ingot.png", "mining_speed":1.0},
-  "1007": {"name":"gold_ingot", "display_name":"Gold Ingot", "stack_size":64, "category":"material", "icon":"res://assets/minecraft/textures/item/gold_ingot.png", "mining_speed":1.0},
-  "1008": {"name":"rotten_flesh", "display_name":"Rotten Flesh", "stack_size":64, "category":"food", "icon":"res://assets/minecraft/textures/item/rotten_flesh.png", "food":2, "healing":0}
+  "1001": {
+    "name": "stick",
+    "display_name": "Stick",
+    "stack_size": 64,
+    "category": "material",
+    "icon": "res://assets/minecraft/textures/item/stick.png",
+    "mining_speed": 1
+  },
+  "1002": {
+    "name": "wooden_pickaxe",
+    "display_name": "Wooden Pickaxe",
+    "stack_size": 1,
+    "category": "tool",
+    "icon": "res://assets/minecraft/textures/item/wooden_pickaxe.png",
+    "mining_speed": 2.5,
+    "tool_tag": "pickaxe",
+    "durability": 59
+  },
+  "1003": {
+    "name": "apple",
+    "display_name": "Apple",
+    "stack_size": 64,
+    "category": "food",
+    "icon": "res://assets/minecraft/textures/item/apple.png",
+    "food": 4,
+    "healing": 4,
+    "saturation_modifier": 0.3
+  },
+  "1004": {
+    "name": "coal",
+    "display_name": "Coal",
+    "stack_size": 64,
+    "category": "material",
+    "icon": "res://assets/minecraft/textures/item/coal.png",
+    "mining_speed": 1
+  },
+  "1005": {
+    "name": "diamond",
+    "display_name": "Diamond",
+    "stack_size": 64,
+    "category": "material",
+    "icon": "res://assets/minecraft/textures/item/diamond.png",
+    "mining_speed": 1
+  },
+  "1006": {
+    "name": "iron_ingot",
+    "display_name": "Iron Ingot",
+    "stack_size": 64,
+    "category": "material",
+    "icon": "res://assets/minecraft/textures/item/iron_ingot.png",
+    "mining_speed": 1
+  },
+  "1007": {
+    "name": "gold_ingot",
+    "display_name": "Gold Ingot",
+    "stack_size": 64,
+    "category": "material",
+    "icon": "res://assets/minecraft/textures/item/gold_ingot.png",
+    "mining_speed": 1
+  },
+  "1008": {
+    "name": "rotten_flesh",
+    "display_name": "Rotten Flesh",
+    "stack_size": 64,
+    "category": "food",
+    "icon": "res://assets/minecraft/textures/item/rotten_flesh.png",
+    "food": 4,
+    "healing": 0,
+    "saturation_modifier": 0.1
+  }
 }
