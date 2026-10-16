@@ -1,0 +1,30 @@
+name: Source archive audit tool tests
+
+on:
+  push:
+    paths:
+      - "tools/audit_source_archive.py"
+      - "tests/test_audit_source_archive.py"
+      - ".github/workflows/archive-audit-tool.yml"
+  pull_request:
+    paths:
+      - "tools/audit_source_archive.py"
+      - "tests/test_audit_source_archive.py"
+      - ".github/workflows/archive-audit-tool.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-tool-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run offline fixture tests
+        run: python -m unittest discover -s tests -p "test_audit_source_archive.py" -v
