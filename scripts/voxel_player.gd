@@ -7,6 +7,7 @@ const SPRINT_SPEED := 7.0
 const JUMP_SPEED := 8.0
 const REACH_DISTANCE := 5.5
 const LOOK_SENSITIVITY := 0.0022
+const ITEM_RENDERER_SCRIPT = preload("res://scripts/item_model_renderer.gd")
 
 var world: Variant
 var inventory: Variant
@@ -17,6 +18,9 @@ var armor_points := 0
 var selected_block_id := 1
 var creative_flight_enabled := false
 var camera: Camera3D
+var _held_item_anchor: Node3D
+var _held_item_renderer: RefCounted
+var _held_item_id := -1
 var _camera_pitch := 0.0
 var _virtual_buttons: Dictionary = {"forward": false, "back": false, "left": false, "right": false, "sprint": false, "sneak": false, "jump": false, "break": false}
 var _mining_target := Vector3i(2147483647, 2147483647, 2147483647)
@@ -38,6 +42,11 @@ func _ready() -> void:
 	camera.current = true
 	camera.fov = 75.0
 	add_child(camera)
+	_held_item_anchor = Node3D.new()
+	_held_item_anchor.name = "HeldItemAnchor"
+	_held_item_anchor.position = Vector3(0.33, -0.28, -0.58)
+	camera.add_child(_held_item_anchor)
+	_held_item_renderer = ITEM_RENDERER_SCRIPT.new()
 	floor_snap_length = 0.2
 	motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED
 
@@ -243,6 +252,22 @@ func _overlaps_player(point: Vector3i) -> bool:
 	var min_player_y := floori(global_position.y)
 	var max_player_y := floori(global_position.y + 1.8)
 	return point.x == floori(global_position.x) and point.z == floori(global_position.z) and point.y >= min_player_y and point.y < max_player_y
+
+func update_held_item(item_id: int) -> void:
+	if _held_item_id == item_id or _held_item_anchor == null:
+		return
+	_held_item_id = item_id
+	for child in _held_item_anchor.get_children():
+		_held_item_anchor.remove_child(child)
+		child.queue_free()
+	if item_id <= 0 or _held_item_renderer == null:
+		return
+	var visual: Node3D = _held_item_renderer.create_item_node(item_id, "firstperson_righthand")
+	visual.name = "HeldItem_%d" % item_id
+	for child in visual.get_children():
+		if child is MeshInstance3D:
+			(child as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_held_item_anchor.add_child(visual)
 
 func select_hotbar(index: int) -> void:
 	if inventory == null:
