@@ -313,7 +313,8 @@ func _rebuild_chunk(key: Vector2i) -> void:
 				var world_x := base_x + local_x
 				var point := Vector3i(world_x, world_y, world_z)
 				for face_index in range(FACE_NAMES.size()):
-					var adjacent := point + FACE_OFFSETS[face_index]
+					var face_offset: Vector3i = FACE_OFFSETS[face_index]
+					var adjacent: Vector3i = point + face_offset
 					if get_block_at(adjacent) != 0:
 						continue
 					var face := String(FACE_NAMES[face_index])
