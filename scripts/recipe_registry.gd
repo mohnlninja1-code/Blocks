@@ -5,13 +5,26 @@ var recipes: Array = []
 var smelting_recipes: Array = []
 var by_id: Dictionary = {}
 var _warned_once: Dictionary = {}
+var _tag_cache: Dictionary = {}
+var _source_data_root := "res://assets/reference_data/minecraft"
+var source_recipe_count := 0
+var source_tag_count := 0
 
 func _ready() -> void:
+	_reload()
+
+func set_source_data_root(path: String) -> void:
+	_source_data_root = path.trim_suffix("/")
 	_reload()
 
 func _reload() -> void:
 	recipes = _read_array("res://data/recipes.json")
 	smelting_recipes = _read_smelting("res://data/smelting_recipes.json")
+	_tag_cache.clear()
+	_warned_once.clear()
+	source_recipe_count = 0
+	source_tag_count = 0
+	_load_source_recipes()
 	by_id.clear()
 	for value in recipes:
 		if not value is Dictionary:
@@ -22,7 +35,7 @@ func _reload() -> void:
 			push_warning("Ignoring recipe without stable ID.")
 			continue
 		if by_id.has(recipe_id):
-			push_error("Duplicate recipe ID: %s" % recipe_id)
+			# Starter-format records take priority only when the source has the exact same ID.
 			continue
 		by_id[recipe_id] = recipe
 
@@ -60,6 +73,159 @@ func _read_array(path: String) -> Array:
 		return parsed
 	push_error("Recipe source must be a JSON array: %s" % path)
 	return []
+
+func _collect_json_paths(current_path: String, output: Array[String]) -> void:
+	var directory := DirAccess.open(current_path)
+	if directory == null:
+		return
+	var files := directory.get_files()
+	files.sort()
+	for file_value in files:
+		var file_name := String(file_value)
+		if file_name.ends_with(".json") and not file_name.begins_with("_"):
+			output.append(current_path.path_join(file_name))
+	var folders := directory.get_directories()
+	folders.sort()
+	for folder_value in folders:
+		_collect_json_paths(current_path.path_join(String(folder_value)), output)
+
+func _relative_data_id(path: String, root_path: String) -> String:
+	var relative := path.trim_prefix(root_path.trim_suffix("/") + "/")
+	return relative.trim_suffix(".json").replace("\\", "/")
+
+func _load_source_recipes() -> void:
+	var recipe_root := _source_data_root.path_join("recipes")
+	var paths: Array[String] = []
+	_collect_json_paths(recipe_root, paths)
+	paths.sort()
+	for path in paths:
+		var parser := JSON.new()
+		if parser.parse(FileAccess.get_file_as_string(path)) != OK or not parser.data is Dictionary:
+			push_warning("Skipping invalid supplied recipe JSON: %s" % path)
+			continue
+		var source_recipe: Dictionary = parser.data.duplicate(true)
+		var recipe_type := String(source_recipe.get("type", ""))
+		var source_id := "minecraft:" + _relative_data_id(path, recipe_root)
+		source_recipe["id"] = source_id
+		source_recipe["source_path"] = path
+		source_recipe["source_pack_recipe"] = true
+		if recipe_type in ["minecraft:smelting", "minecraft:blasting", "minecraft:smoking", "minecraft:campfire_cooking"]:
+			smelting_recipes.append(source_recipe)
+		else:
+			recipes.append(source_recipe)
+		source_recipe_count += 1
+
+func _resolve_source_tag_id(tag_value: String) -> String:
+	var tag_name := tag_value.strip_edges()
+	if tag_name.begins_with("#"):
+		tag_name = tag_name.substr(1)
+	if tag_name.contains(":"):
+		if tag_name.get_slice(":", 0) != "minecraft":
+			return ""
+		tag_name = tag_name.get_slice(":", 1)
+	if tag_name.begins_with("/") or ".." in tag_name or "\\" in tag_name:
+		return ""
+	return tag_name
+
+func _tag_contains_item(tag_value: String, item_id: int, visited: Array[String] = []) -> bool:
+	var tag_name := _resolve_source_tag_id(tag_value)
+	if tag_name.is_empty() or tag_name in visited:
+		return false
+	var cache_key := tag_name
+	if _tag_cache.has(cache_key):
+		var cached: Dictionary = _tag_cache[cache_key]
+		source_tag_count = maxi(source_tag_count, int(cached.get("known_tag_count", source_tag_count)))
+		var ids: Array = cached.get("item_ids", [])
+		return item_id in ids
+	var tag_path := _source_data_root.path_join("tags/items").path_join(tag_name + ".json")
+	if not FileAccess.file_exists(tag_path):
+		_tag_cache[cache_key] = {"item_ids": [], "missing": true, "known_tag_count": source_tag_count}
+		return false
+	var parser := JSON.new()
+	if parser.parse(FileAccess.get_file_as_string(tag_path)) != OK or not parser.data is Dictionary:
+		_tag_cache[cache_key] = {"item_ids": [], "invalid": true, "known_tag_count": source_tag_count}
+		return false
+	source_tag_count += 1
+	var definition: Dictionary = parser.data
+	var ids: Array[int] = []
+	var next_visited: Array[String] = visited.duplicate()
+	next_visited.append(tag_name)
+	var values: Variant = definition.get("values", [])
+	if values is Array:
+		for value in values:
+			var value_name := ""
+			var required := true
+			if value is String:
+				value_name = String(value)
+			elif value is Dictionary:
+				value_name = String(value.get("id", ""))
+				required = bool(value.get("required", true))
+			else:
+				continue
+			if value_name.begins_with("#"):
+				var nested_name := _resolve_source_tag_id(value_name)
+				if nested_name.is_empty():
+					continue
+				var nested_ids := _resolve_source_tag_items(nested_name, next_visited)
+				for nested_id in nested_ids:
+					if not nested_id in ids:
+						ids.append(nested_id)
+			else:
+				var resolved_id := _resolve_item_name(value_name)
+				if resolved_id > 0 and not resolved_id in ids:
+					ids.append(resolved_id)
+				elif required and resolved_id == 0:
+					# Required entries are present in the source tag, but the current runtime
+					# catalog cannot reference that item yet. It remains a catalog gap.
+					pass
+	_tag_cache[cache_key] = {"item_ids": ids, "missing": false, "known_tag_count": source_tag_count}
+	return item_id in ids
+
+func _resolve_source_tag_items(tag_name: String, visited: Array[String]) -> Array[int]:
+	var normalized := _resolve_source_tag_id(tag_name)
+	if normalized.is_empty() or normalized in visited:
+		return []
+	var tag_path := _source_data_root.path_join("tags/items").path_join(normalized + ".json")
+	if not FileAccess.file_exists(tag_path):
+		return []
+	var parser := JSON.new()
+	if parser.parse(FileAccess.get_file_as_string(tag_path)) != OK or not parser.data is Dictionary:
+		return []
+	source_tag_count += 1
+	var result: Array[int] = []
+	var next_visited := visited.duplicate()
+	next_visited.append(normalized)
+	var definition: Dictionary = parser.data
+	var values: Variant = definition.get("values", [])
+	if not values is Array:
+		return result
+	for value in values:
+		var value_name := ""
+		if value is String:
+			value_name = String(value)
+		elif value is Dictionary:
+			value_name = String(value.get("id", ""))
+		else:
+			continue
+		if value_name.begins_with("#"):
+			for nested_id in _resolve_source_tag_items(value_name.substr(1), next_visited):
+				if not nested_id in result:
+					result.append(nested_id)
+		else:
+			var resolved_id := _resolve_item_name(value_name)
+			if resolved_id > 0 and not resolved_id in result:
+				result.append(resolved_id)
+	return result
+
+func catalog_diagnostics() -> Dictionary:
+	return {
+		"starter_and_source_crafting_recipe_count": recipes.size(),
+		"source_recipe_count": source_recipe_count,
+		"source_cooking_recipe_count": maxi(0, smelting_recipes.size() - 2),
+		"cached_item_tag_count": source_tag_count,
+		"source_data_root": _source_data_root,
+		"tag_status": "PARTIAL_SOURCE_TAG_RESOLVER_UNVERIFIED"
+	}
 
 func get_recipe(recipe_id: String) -> Dictionary:
 	if not by_id.has(recipe_id):
