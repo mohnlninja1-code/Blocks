@@ -7,7 +7,9 @@ on:
       - "scenes/**"
       - "scripts/**"
       - "data/**"
-      - "tests/**"
+      - "tests/run_tests.gd"
+      - "tests/model_loader_tests.gd"
+      - "tests/fixtures/**"
       - "tools/validate_project.py"
       - "tools/prepare_assets.py"
       - ".github/workflows/godot-foundation.yml"
@@ -29,7 +31,7 @@ permissions:
 jobs:
   godot-foundation:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -53,5 +55,7 @@ jobs:
         run: godot --headless --editor --path . --import --quit
       - name: Run foundational engine tests
         run: godot --headless --path . --script res://tests/run_tests.gd
+      - name: Run isolated model resolver tests
+        run: godot --headless --path . --script res://tests/model_loader_tests.gd
       - name: Smoke launch main scene
         run: godot --headless --path . --quit-after 5
