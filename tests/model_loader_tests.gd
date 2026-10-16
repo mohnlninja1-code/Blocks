@@ -55,7 +55,7 @@ func _run_tests() -> void:
 	_check(missing_model.is_empty() and not model_loader.last_error.is_empty(), "reports missing model file")
 	print("MODEL TEST CHECKPOINT 7: isolated chunk mesh integration")
 	var registry: Variant = root.get_node_or_null("BlockRegistry")
-	var had_test_definition := registry != null and registry.blocks.has(9000)
+	var had_test_definition: bool = registry != null and registry.blocks.has(9000)
 	var saved_test_definition: Dictionary = registry.blocks.get(9000, {}).duplicate(true) if had_test_definition else {}
 	if registry != null:
 		registry.blocks[9000] = {"id": 9000, "name": "test_block", "display_name": "Model Test Block", "solid": true, "hardness": 1.0}
@@ -71,7 +71,7 @@ func _run_tests() -> void:
 	var chunk_data := PackedInt32Array()
 	chunk_data.resize(render_world.CHUNK_VOLUME)
 	chunk_data.fill(0)
-	var local_y := 200 - render_world.MIN_Y
+	var local_y: int = 200 - render_world.MIN_Y
 	chunk_data[render_world._cell_index(2, local_y, 2)] = 9000
 	render_world._chunks[Vector2i.ZERO] = {"data": chunk_data, "root": chunk_root}
 	render_world._rebuild_chunk(Vector2i.ZERO)
