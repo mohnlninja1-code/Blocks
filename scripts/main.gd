@@ -473,6 +473,8 @@ func _filter_creative_catalog(query: String) -> void:
 		var item_name := String(definition.get("name", ""))
 		if item_id <= 0 or item_name in ["air", "cave_air", "void_air", "structure_void"]:
 			continue
+		if bool(definition.get("runtime_catalog_only", false)) and not bool(definition.get("creative_visible", true)):
+			continue
 		var display_name := String(definition.get("display_name", item_name))
 		if not normalized_query.is_empty() and not (item_name.to_lower().contains(normalized_query) or display_name.to_lower().contains(normalized_query)):
 			continue
