@@ -36,6 +36,8 @@ var _world_name_input: LineEdit
 var _seed_input: LineEdit
 var _mode_select: OptionButton
 var _world_type_select: OptionButton
+var _difficulty_select: OptionButton
+var _world_difficulty := "normal"
 var _save_list: VBoxContainer
 var _hotbar_buttons: Array[Button] = []
 var _inventory_buttons: Array[Button] = []
@@ -113,7 +115,7 @@ func _create_main_menu() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_menu_root.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 500)
+	panel.custom_minimum_size = Vector2(460, 550)
 	_style_panel(panel)
 	center.add_child(panel)
 	var content := VBoxContainer.new()
@@ -156,6 +158,14 @@ func _create_main_menu() -> void:
 	_mode_select.add_item("Creative", 1)
 	_mode_select.select(0)
 	content.add_child(_mode_select)
+	content.add_child(_field_label("Difficulty"))
+	_difficulty_select = OptionButton.new()
+	_difficulty_select.add_item("Peaceful", 0)
+	_difficulty_select.add_item("Easy", 1)
+	_difficulty_select.add_item("Normal", 2)
+	_difficulty_select.add_item("Hard", 3)
+	_difficulty_select.select(2)
+	content.add_child(_difficulty_select)
 	var start_button := Button.new()
 	start_button.text = "Create New World"
 	_style_button(start_button, Vector2(0, 46))
@@ -560,7 +570,10 @@ func _on_create_world() -> void:
 	var seed_text := _seed_input.text.strip_edges()
 	var seed_value := int(seed_text) if not seed_text.is_empty() and seed_text.is_valid_int() else int(Time.get_unix_time_from_system())
 	var mode := "creative" if _mode_select.selected == 1 else "survival"
-	_start_world(name, seed_value, mode, {})
+	var difficulty_name := "normal"
+	if _difficulty_select != null:
+		difficulty_name = String(_difficulty_select.get_item_text(_difficulty_select.selected)).to_lower()
+	_start_world(name, seed_value, mode, {"difficulty": difficulty_name})
 
 func _safe_slot(value: String) -> String:
 	var slot := value.strip_edges().to_lower()
@@ -590,6 +603,12 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	_world_name = name
 	_active_slot = _safe_slot(name)
 	_game_mode = mode
+	_world_difficulty = String(saved.get("difficulty", "normal")).to_lower()
+	if _world_difficulty not in ["peaceful", "easy", "normal", "hard"]:
+		_world_difficulty = "normal"
+	if _difficulty_select != null:
+		var difficulty_index := ["peaceful", "easy", "normal", "hard"].find(_world_difficulty)
+		_difficulty_select.select(maxi(0, difficulty_index))
 	_world_clock = float(saved.get("world_clock", 0.25))
 	var selected_terrain_mode := "overworld"
 	if _world_type_select != null and _world_type_select.selected == 1:
@@ -625,6 +644,7 @@ func _start_world(name: String, seed_value: int, mode: String, saved: Dictionary
 	player.world = world
 	player.inventory = inventory
 	player.game_mode = mode
+	player.set_difficulty(_world_difficulty)
 	add_child(player)
 	if saved.has("player_state") and saved["player_state"] is Dictionary:
 		player.deserialize(saved["player_state"])
@@ -731,6 +751,7 @@ func _save_world() -> void:
 		"world_name": _world_name,
 		"seed": int(world.world_seed),
 		"game_mode": _game_mode,
+		"difficulty": _world_difficulty,
 		"terrain_mode": String(world.terrain_mode),
 		"world_state": world.save_state(),
 		"player_state": player.serialize(),
