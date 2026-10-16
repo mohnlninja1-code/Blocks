@@ -9,6 +9,7 @@ on:
       - "data/**"
       - "tests/run_tests.gd"
       - "tests/model_loader_tests.gd"
+      - "tests/recipe_registry_tests.gd"
       - "tests/fixtures/**"
       - "tools/validate_project.py"
       - "tools/prepare_assets.py"
@@ -61,5 +62,7 @@ jobs:
         run: timeout 90s godot --headless --path . --script res://tests/run_tests.gd
       - name: Run isolated model resolver tests
         run: timeout 60s godot --headless --path . --script res://tests/model_loader_tests.gd
+      - name: Run isolated recipe registry tests
+        run: timeout 60s godot --headless --path . --script res://tests/recipe_registry_tests.gd
       - name: Smoke launch main scene
         run: timeout 20s godot --headless --path . --quit-after 5
