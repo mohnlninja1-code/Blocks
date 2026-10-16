@@ -1,28 +1,19 @@
-# Blocks: Voxel Frontier
+# Blocks — Voxel Frontier
 
-Native GDScript voxel-sandbox project targeting **Godot 4.7.2 stable** and Android. This repository contains the playable development milestone, selected supplied resource-pack art/audio, source audits, automated test script and an Android debug-APK workflow.
+Original Godot 4.7.2-targeted voxel sandbox project, with Android landscape export configuration.
 
-**Important: this is not yet a completed Minecraft Java 1.18.2 recreation or a release candidate.** Fluids, Redstone, most blocks/items/recipes/mobs, complete biomes/structures, Nether/End, deep progression, exported screenshot review and Android device validation remain outstanding. We will not call renderer compatibility verified until actual output has been inspected.
+## Repository status — read before use
 
-## Setup
+**The GitHub repository is currently only a bootstrap scaffold. It is not the complete project and does not contain the full GDScript runtime, asset archives or Android workflow.** I have not been able to sync the locally prepared full project bundle through the connected GitHub file API. Do not treat this repository's current contents as a built or playable release.
 
-Run `python3 tools/prepare_assets.py --force` to restore the 75 explicitly selected texture/audio files from `assets/blocks-artwork.zip.b64`. Then open `project.godot` in Godot 4.7.2 stable. See `docs/BUILD_ANDROID.md` and `docs/TEST_PLAN.md` for checks and export steps.
+The full local source package for the current development milestone contains the scripts, registries, tests, source audits and the complete user-supplied resource ZIP. It is available as an archive in the originating ChatGPT conversation. SHA and completeness evidence are in `docs/DELIVERY_STATUS.md` within that package.
 
-## Source checks
+## Target and known gaps
 
-```sh
-python3 tools/validate_project.py
-godot --headless --editor --path . --import --quit
-godot --headless --path . --script res://tests/run_tests.gd
-godot --headless --path . --quit-after 5
-```
+- Engine target: Godot 4.7.2 stable, GDScript.
+- Android orientation target: landscape only.
+- Renderer target: GL Compatibility / OpenGL ES, selected as a conservative path; runtime renderer output has **not** been visually verified.
+- This is not Minecraft Java 1.18.2 parity. Fluids, full Redstone/TNT behavior, all content/recipes/states, all mobs and spawn rules, complete biome/structure generation, Nether/End, exact touchscreen UI, and device/renderer regression testing remain outstanding.
+- No Godot parser/test run, APK export, device install, or screenshot inspection is claimed as passed.
 
-GitHub Actions provisions pinned Godot 4.7.2/templates, restores selected assets, validates references, imports and tests the project, smoke-starts the main scene, and exports `blocks-debug.apk` as `blocks-android-debug`. A successful export is not a visual/gameplay release certification.
-
-## Asset accounting
-
-`docs/ASSET_USAGE.csv` maps each of 75 selected assets to a live consumer. The source archive contained 14,459 files and its complete asset audit was produced locally as `docs/ASSET_MANIFEST.csv`; the compact per-file report is available in the project archive from this conversation and its compressed/encoded copy in this repository. The original full archive is not copied into the repository. Most supplied reference assets remain unintegrated; see `docs/ASSET_MANIFEST.md` and `docs/FEATURE_MATRIX.md`.
-
-## Renderer
-
-GL Compatibility is selected for a conservative OpenGL ES-oriented Android path. This source configuration has not been rendered or inspected in this environment, so the final Android visual gate remains unresolved. See `docs/KNOWN_ISSUES.md`.
+A successful build is not proof of visual correctness or game completeness. The source project's feature matrix, per-recipe ledger, asset manifest and known-issue register are release gates, not marketing checklists.
