@@ -59,7 +59,7 @@ func _run_tests() -> void:
 	_check(not tight_inventory.craft(impossible_output), "craft that exceeds output capacity fails")
 	_check(JSON.stringify(tight_inventory.serialize()) == tight_before, "failed output capacity craft rolls inventory back")
 
-	var saved_state := craft_inventory.serialize()
+	var saved_state: Dictionary = craft_inventory.serialize()
 	var inventory_roundtrip: Variant = inventory_script.new(4)
 	_check(inventory_roundtrip.deserialize(saved_state), "inventory state deserializes")
 	_check(inventory_roundtrip.count_item(1001) == 4, "inventory state preserves stack data")
