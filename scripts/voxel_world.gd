@@ -8,7 +8,7 @@ const CHUNK_HEIGHT := MAX_Y - MIN_Y + 1
 const CHUNK_VOLUME := CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT
 const FACE_NAMES := ["top", "bottom", "north", "south", "east", "west"]
 const FACE_OFFSETS := [Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(0, 0, 1), Vector3i(1, 0, 0), Vector3i(-1, 0, 0)]
-const FACE_NORMALS := [Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD, Vector3.RIGHT, Vector3.LEFT]
+const FACE_NORMALS := [Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK, Vector3.RIGHT, Vector3.LEFT]
 const TRIANGLE_ORDER := [0, 1, 2, 0, 2, 3]
 const FACE_UVS := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
 
@@ -211,7 +211,7 @@ func is_solid_at(point: Vector3i) -> bool:
 	if id == 0:
 		return false
 	var tree := get_tree()
-	var registry := tree.root.get_node_or_null("BlockRegistry") if tree != null else null
+	var registry: Variant = tree.root.get_node_or_null("BlockRegistry") if tree != null else null
 	if registry != null and registry.blocks.has(id):
 		return bool(registry.blocks[id].get("solid", true))
 	return true
@@ -262,7 +262,7 @@ func _material_for_face(block_id: int, face: String) -> StandardMaterial3D:
 	material.roughness = 1.0
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var registry := get_tree().root.get_node_or_null("BlockRegistry")
+	var registry: Variant = get_tree().root.get_node_or_null("BlockRegistry")
 	var texture_path := ""
 	if registry != null and registry.has_method("texture_path_for_face"):
 		texture_path = String(registry.texture_path_for_face(block_id, face))
@@ -296,6 +296,7 @@ func _rebuild_chunk(key: Vector2i) -> void:
 	if not is_instance_valid(root):
 		return
 	for child in root.get_children():
+		root.remove_child(child)
 		child.queue_free()
 	var data: PackedInt32Array = chunk["data"]
 	var surfaces: Dictionary = {}
