@@ -1,0 +1,8 @@
+[
+ {"id":"oak_planks","name":"Oak Planks ×4","inputs":[{"id":8,"count":1}],"output":{"id":9,"count":4}},
+ {"id":"sticks","name":"Stick ×4","inputs":[{"id":9,"count":2}],"output":{"id":1001,"count":4}},
+ {"id":"crafting_table","name":"Crafting Table","inputs":[{"id":9,"count":4}],"output":{"id":15,"count":1}},
+ {"id":"furnace","name":"Furnace","inputs":[{"id":4,"count":8}],"output":{"id":16,"count":1},"requires_station":"crafting_table"},
+ {"id":"wooden_pickaxe","name":"Wooden Pickaxe","inputs":[{"id":9,"count":3},{"id":1001,"count":2}],"output":{"id":1002,"count":1},"requires_station":"crafting_table"},
+ {"id":"sandstone","name":"Sandstone","inputs":[{"id":6,"count":4}],"output":{"id":17,"count":1}}
+]
