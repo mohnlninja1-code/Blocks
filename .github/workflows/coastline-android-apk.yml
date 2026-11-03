@@ -1,0 +1,82 @@
+name: Build COASTLINE Android APK
+
+on:
+  push:
+    branches:
+      - coastline-cordova-build
+    paths:
+      - 'coastline-source-b64/**'
+      - '.github/workflows/coastline-android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build debug APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform and build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Reconstruct and verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat coastline-source-b64/part-*.txt | tr -d '\r\n[:space:]' | base64 --decode > /tmp/COASTLINE_CORDOVA_SOURCE.zip
+          unzip -t /tmp/COASTLINE_CORDOVA_SOURCE.zip
+          unzip -q /tmp/COASTLINE_CORDOVA_SOURCE.zip
+          test -f coastline-cordova/config.xml
+          test -f coastline-cordova/www/index.html
+          test -f coastline-cordova/www/src/main.js
+          test -f coastline-cordova/www/src/touch-controls.js
+          test -f coastline-cordova/www/style.css
+          test -f coastline-cordova/resources/icon.png
+
+      - name: Install Cordova dependencies
+        working-directory: coastline-cordova
+        run: npm install
+
+      - name: Add Cordova Android platform
+        working-directory: coastline-cordova
+        run: npx cordova platform add android@15.1.0
+
+      - name: Build Android debug APK
+        working-directory: coastline-cordova
+        run: npx cordova build android --debug
+
+      - name: Verify APK output
+        shell: bash
+        run: |
+          APK="coastline-cordova/platforms/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          ls -lh "$APK"
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: COASTLINE-Android-APK
+          path: coastline-cordova/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
